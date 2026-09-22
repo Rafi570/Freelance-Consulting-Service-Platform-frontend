@@ -161,3 +161,100 @@ export async function getGigCategories(): Promise<IGigCategory[]> {
   }
 }
 
+export interface IGigPackage {
+  id: string;
+  gigId: string;
+  tier: 'BASIC' | 'STANDARD' | 'PREMIUM';
+  name: string;
+  description: string;
+  price: number;
+  deliveryTimeInDays: number;
+  revisions: number;
+  features: string[];
+}
+
+export interface IGigProvider {
+  id: string;
+  name: string;
+  email: string;
+  profile?: {
+    id?: string;
+    bio?: string | null;
+    skills?: string[];
+    hourlyRate?: number | null;
+    experience?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    portfolioUrl?: string | null;
+    isSubscribed?: boolean;
+  } | null;
+}
+
+export interface IGig {
+  id: string;
+  providerId: string;
+  title: string;
+  description: string;
+  category: string;
+  tags: string[];
+  images: string[];
+  status: 'ACTIVE' | 'PAUSED' | 'DRAFT';
+  createdAt: string;
+  updatedAt: string;
+  packages: IGigPackage[];
+  provider: IGigProvider;
+  totalSold: number;
+  totalReviews: number;
+  averageRating: number;
+}
+
+export interface IGetGigsParams {
+  searchTerm?: string;
+  category?: string;
+  minPrice?: number | string;
+  maxPrice?: number | string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface IGigsApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    meta: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPage: number;
+    };
+    data: IGig[];
+  };
+}
+
+export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse['data']> {
+  const query = new URLSearchParams();
+  if (params?.searchTerm) query.append('searchTerm', params.searchTerm);
+  if (params?.category && params.category !== 'All') query.append('category', params.category);
+  if (params?.minPrice) query.append('minPrice', String(params.minPrice));
+  if (params?.maxPrice) query.append('maxPrice', String(params.maxPrice));
+  if (params?.sortBy) query.append('sortBy', params.sortBy);
+  if (params?.sortOrder) query.append('sortOrder', params.sortOrder);
+  if (params?.page) query.append('page', String(params.page));
+  if (params?.limit) query.append('limit', String(params.limit));
+
+  const url = `${API_BASE_URL}/gigs${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to load gigs');
+  }
+
+  return data.data;
+}
+
+
