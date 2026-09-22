@@ -141,23 +141,30 @@ export interface IGigCategory {
   count?: number;
 }
 
+let categoriesCache: { data: IGigCategory[]; timestamp: number } | null = null;
+
 export async function getGigCategories(): Promise<IGigCategory[]> {
+  if (categoriesCache && Date.now() - categoriesCache.timestamp < 300 * 1000) {
+    return categoriesCache.data;
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/gigs/categories`, {
-      cache: 'no-store',
+      next: { revalidate: 60 },
     });
     const data = await res.json();
     if (res.ok && data.success && Array.isArray(data.data)) {
-      return data.data.map((item: any) =>
+      const parsed = data.data.map((item: any) =>
         typeof item === 'string'
           ? { name: item, count: 0 }
           : { name: item.name || String(item), count: item.count ?? 0 }
       );
+      categoriesCache = { data: parsed, timestamp: Date.now() };
+      return parsed;
     }
-    return [];
+    return categoriesCache ? categoriesCache.data : [];
   } catch (err) {
     console.error('Failed to fetch gig categories:', err);
-    return [];
+    return categoriesCache ? categoriesCache.data : [];
   }
 }
 
@@ -233,6 +240,9 @@ export interface IGigsApiResponse {
   };
 }
 
+const clientGigsCache = new Map<string, { data: IGigsApiResponse['data']; timestamp: number }>();
+const CLIENT_CACHE_TTL = 60 * 1000; // 60 seconds
+
 export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse['data']> {
   const query = new URLSearchParams();
   if (params?.searchTerm) query.append('searchTerm', params.searchTerm);
@@ -245,15 +255,24 @@ export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse
   if (params?.limit) query.append('limit', String(params.limit));
 
   const url = `${API_BASE_URL}/gigs${query.toString() ? `?${query.toString()}` : ''}`;
+
+  // Instant 0ms memory cache hit
+  const cached = clientGigsCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+    return cached.data;
+  }
+
   const res = await fetch(url, {
-    cache: 'no-store',
+    next: { revalidate: 30 },
   });
 
   const data = await res.json();
   if (!res.ok || !data.success) {
+    if (cached) return cached.data;
     throw new Error(data.message || 'Failed to load gigs');
   }
 
+  clientGigsCache.set(url, { data: data.data, timestamp: Date.now() });
   return data.data;
 }
 

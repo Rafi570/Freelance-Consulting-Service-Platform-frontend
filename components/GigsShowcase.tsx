@@ -17,16 +17,12 @@ import {
   ChevronDown,
   Check,
   X,
-  Shield,
   Clock,
   Zap,
-  SlidersHorizontal,
   ChevronRight,
   Flame,
-  Layers,
-  Sparkles,
-  Info,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 
 export default function GigsShowcase() {
@@ -49,15 +45,19 @@ export default function GigsShowcase() {
   const [likedGigs, setLikedGigs] = useState<Record<string, boolean>>({});
 
   // Active Dropdowns
-  const [openDropdown, setOpenDropdown] = useState<'category' | 'budget' | 'delivery' | 'seller' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'category' | 'budget' | 'delivery' | null>(null);
 
   const [categories, setCategories] = useState<IGigCategory[]>([]);
   const [gigs, setGigs] = useState<IGig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [selectedGigModal, setSelectedGigModal] = useState<IGig | null>(null);
   const [activePackageTab, setActivePackageTab] = useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC');
 
-  // Load categories
+  // Fast In-Memory Cache on client component level
+  const localCache = useRef<Record<string, IGig[]>>({});
+
+  // Load categories with 0ms lag
   useEffect(() => {
     let isMounted = true;
     getGigCategories()
@@ -70,22 +70,36 @@ export default function GigsShowcase() {
     };
   }, []);
 
-  // Update selected category if URL changes (e.g. from Navbar)
+  // Sync category & search from URL
   useEffect(() => {
     const urlCategory = searchParams.get('category');
     if (urlCategory && urlCategory !== selectedCategory) {
       setSelectedCategory(urlCategory);
     }
     const query = searchParams.get('query') || searchParams.get('searchTerm');
-    if (query && query !== searchTerm) {
+    if (query !== null && query !== searchTerm) {
       setSearchTerm(query);
     }
   }, [searchParams]);
 
-  // Load Gigs
+  // Load Gigs with Instant Cache-First approach (eliminates loading delays)
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
+    const cacheKey = `${selectedCategory}_${searchTerm}_${sortBy}_${minPrice}_${maxPrice}_${deliveryFilter}`;
+
+    // 1. If we have local cached results, display them immediately with 0ms delay!
+    if (localCache.current[cacheKey]) {
+      setGigs(localCache.current[cacheKey]);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Only show loading skeleton on very first load if we don't have any gigs yet
+    if (gigs.length === 0) {
+      setLoading(true);
+    } else {
+      setIsUpdating(true);
+    }
 
     const timer = setTimeout(() => {
       getGigs({
@@ -113,15 +127,20 @@ export default function GigsShowcase() {
                 g.packages?.some((p) => p.deliveryTimeInDays <= 7)
               );
             }
+            localCache.current[cacheKey] = list;
             setGigs(list);
             setLoading(false);
+            setIsUpdating(false);
           }
         })
         .catch((err) => {
           console.error('Error fetching gigs:', err);
-          if (isMounted) setLoading(false);
+          if (isMounted) {
+            setLoading(false);
+            setIsUpdating(false);
+          }
         });
-    }, 250);
+    }, 150);
 
     return () => {
       isMounted = false;
@@ -177,18 +196,17 @@ export default function GigsShowcase() {
     );
   }, [selectedGigModal, activePackageTab]);
 
-  // Related suggestion tags (like Fiverr)
+  // Related suggestion tags (exact Fiverr search page header)
   const relatedTags = [
-    'Web Development',
-    'WordPress Website',
-    'Custom Web App',
-    'Next.js Full Stack',
-    'Brand Identity',
-    'Digital Marketing',
-    'AI Integration',
-    'Motion Graphics',
-    'SEO Copywriting',
-    'E-Commerce'
+    'website development',
+    'wordpress website',
+    'web developer',
+    'custom web application',
+    'responsive website',
+    'ecommerce website',
+    'landing page design',
+    'full stack developer',
+    'frontend development'
   ];
 
   return (
@@ -196,13 +214,13 @@ export default function GigsShowcase() {
       {/* 1. FIVERR HEADER CONTAINER */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs font-normal text-[#74767e] mb-3">
+        <nav className="flex items-center gap-1.5 text-xs text-[#74767e] mb-3">
           <Link href="/" className="hover:text-[#1dbf73] transition-colors">
             ConsulSphere
           </Link>
           <span className="text-[#c5c6c9]">/</span>
           <Link href="/gigs" className="hover:text-[#1dbf73] transition-colors">
-            Services
+            Programming &amp; Tech
           </Link>
           {selectedCategory !== 'All' && (
             <>
@@ -215,25 +233,25 @@ export default function GigsShowcase() {
         {/* Big Fiverr Heading */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#222325] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-[#222325] tracking-tight">
               {selectedCategory === 'All'
                 ? searchTerm
                   ? `Results for "${searchTerm}"`
-                  : 'Website Development & Consulting Services'
+                  : 'Website Development Services'
                 : `${selectedCategory} Services`}
             </h1>
-            <p className="mt-1.5 text-sm text-[#62646a] max-w-3xl leading-relaxed">
-              Find the perfect verified consultant for your project. Professional freelance services ranked by completed orders and authentic client ratings.
+            <p className="mt-1 text-sm text-[#62646a] max-w-3xl leading-relaxed">
+              Find the perfect verified consultant for your project. Professional development services to enhance your online presence. Get started today!
             </p>
           </div>
 
-          {/* Search bar inside header if needed */}
-          <div className="w-full md:w-80 relative">
+          {/* Search bar inside header */}
+          <div className="w-full md:w-84 relative">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search services..."
+              placeholder="What service are you looking for?"
               className="w-full pl-9 pr-8 py-2 rounded-lg border border-[#c5c6c9] bg-white text-sm text-[#222325] placeholder:text-[#95979d] focus:outline-none focus:border-[#222325]"
             />
             <Search className="w-4 h-4 text-[#74767e] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -250,7 +268,7 @@ export default function GigsShowcase() {
         </div>
 
         {/* Related Searches Tag Chips (Fiverr Style) */}
-        <div className="mt-4 pt-3 flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+        <div className="mt-4 pt-2 flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
           <span className="text-xs font-bold text-[#74767e] shrink-0 mr-1">
             Suggested:
           </span>
@@ -272,7 +290,7 @@ export default function GigsShowcase() {
 
       {/* 2. FIVERR ICONIC FILTER ROW */}
       <div className="border-y border-[#e4e5e7] bg-white sticky top-18 z-30 shadow-2xs">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-4">
           {/* Left: Filter Dropdown Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Category Dropdown */}
@@ -282,7 +300,7 @@ export default function GigsShowcase() {
                 onClick={() =>
                   setOpenDropdown(openDropdown === 'category' ? null : 'category')
                 }
-                className={`px-3.5 py-2 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                className={`px-3.5 py-1.5 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
                   selectedCategory !== 'All'
                     ? 'border-[#222325] bg-[#f7f7f7] text-[#222325]'
                     : 'border-[#c5c6c9] bg-white text-[#404145] hover:border-[#222325]'
@@ -334,7 +352,7 @@ export default function GigsShowcase() {
                 onClick={() =>
                   setOpenDropdown(openDropdown === 'budget' ? null : 'budget')
                 }
-                className={`px-3.5 py-2 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                className={`px-3.5 py-1.5 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
                   minPrice || maxPrice
                     ? 'border-[#222325] bg-[#f7f7f7] text-[#222325]'
                     : 'border-[#c5c6c9] bg-white text-[#404145] hover:border-[#222325]'
@@ -412,7 +430,7 @@ export default function GigsShowcase() {
                 onClick={() =>
                   setOpenDropdown(openDropdown === 'delivery' ? null : 'delivery')
                 }
-                className={`px-3.5 py-2 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                className={`px-3.5 py-1.5 rounded-lg border text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
                   deliveryFilter !== 'any'
                     ? 'border-[#222325] bg-[#f7f7f7] text-[#222325]'
                     : 'border-[#c5c6c9] bg-white text-[#404145] hover:border-[#222325]'
@@ -512,14 +530,17 @@ export default function GigsShowcase() {
       </div>
 
       {/* 3. RESULTS BAR (Count + Sort By) */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs sm:text-sm text-[#74767e]">
-        <div className="font-semibold text-[#222325]">
-          {loading ? (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between text-xs sm:text-sm text-[#74767e]">
+        <div className="font-semibold text-[#222325] flex items-center gap-2">
+          {loading && gigs.length === 0 ? (
             <span>Loading services...</span>
           ) : (
             <span>
               <strong className="text-[#222325]">{gigs.length}</strong> services available
             </span>
+          )}
+          {isUpdating && (
+            <span className="inline-block w-2 h-2 rounded-full bg-[#1dbf73] animate-ping" />
           )}
         </div>
 
@@ -540,19 +561,19 @@ export default function GigsShowcase() {
         </div>
       </div>
 
-      {/* 4. THE AUTHENTIC FIVERR GIG CARDS GRID */}
+      {/* 4. THE AUTHENTIC FIVERR GIG CARDS GRID (Exact Fiverr HTML/CSS Layout) */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {loading && gigs.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-8">
             {Array.from({ length: 8 }).map((_, idx) => (
-              <div key={idx} className="animate-pulse space-y-3">
-                <div className="aspect-[16/10] bg-slate-200 rounded-xl" />
+              <div key={idx} className="animate-pulse space-y-2.5">
+                <div className="aspect-[16/10] bg-slate-100 rounded-xl" />
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-slate-200" />
+                  <div className="w-6 h-6 rounded-full bg-slate-200" />
                   <div className="h-3 bg-slate-200 rounded w-1/3" />
                 </div>
                 <div className="h-4 bg-slate-200 rounded w-5/6" />
-                <div className="h-4 bg-slate-200 rounded w-1/2" />
+                <div className="h-3 bg-slate-200 rounded w-1/2" />
               </div>
             ))}
           </div>
@@ -571,7 +592,7 @@ export default function GigsShowcase() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-8">
             {gigs.map((gig) => {
               const lowestPrice =
                 gig.packages && gig.packages.length > 0
@@ -584,10 +605,10 @@ export default function GigsShowcase() {
                 <article
                   key={gig.id}
                   onClick={() => setSelectedGigModal(gig)}
-                  className="group flex flex-col cursor-pointer transition-all duration-200"
+                  className="group relative flex flex-col cursor-pointer bg-white"
                 >
-                  {/* Image Container (16:10 Ratio with Rounded Corners like Fiverr) */}
-                  <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#f4f5f7] mb-3">
+                  {/* 1. Image Container (16:10 Ratio with Rounded Corners like Fiverr) */}
+                  <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-[#f4f5f7] mb-2.5">
                     <img
                       src={
                         gig.images && gig.images[0]
@@ -595,10 +616,10 @@ export default function GigsShowcase() {
                           : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800'
                       }
                       alt={gig.title}
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                     />
 
-                    {/* Top Left Badge: ConsulSphere's Choice or Top Seller */}
+                    {/* Top Left Badge: Choice / Top Seller */}
                     {gig.totalSold >= 20 ? (
                       <div className="absolute top-2.5 left-2.5">
                         <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md bg-[#222325] text-white shadow-xs">
@@ -607,7 +628,7 @@ export default function GigsShowcase() {
                       </div>
                     ) : (
                       <div className="absolute top-2.5 left-2.5">
-                        <span className="px-2 py-0.8 text-[10px] font-bold uppercase rounded-md bg-[#222325]/80 backdrop-blur-xs text-white">
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-[#222325]/75 backdrop-blur-xs text-white">
                           {gig.category}
                         </span>
                       </div>
@@ -617,7 +638,7 @@ export default function GigsShowcase() {
                     <button
                       type="button"
                       onClick={(e) => toggleLike(e, gig.id)}
-                      className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer"
+                      className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer"
                       aria-label="Save to Wishlist"
                     >
                       <Heart
@@ -628,60 +649,58 @@ export default function GigsShowcase() {
                         }`}
                       />
                     </button>
+                  </div>
 
-                    {/* Bottom Highlight: Order Count / Clients Served */}
-                    {gig.totalSold > 0 && (
-                      <div className="absolute bottom-2 left-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/95 backdrop-blur-md text-[#222325] font-extrabold text-[11px] shadow-sm border border-black/5">
-                          <Flame className="w-3 h-3 text-[#1dbf73]" />
-                          <span>{gig.totalSold}+ Clients Served</span>
-                        </span>
+                  {/* 2. Seller / Provider Info Row (Fiverr layout: flex-between flex-items-center) */}
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-full bg-[#1dbf73] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                        {getInitials(gig.provider?.name)}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Seller / Provider Info Row */}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-6 h-6 rounded-full bg-[#1dbf73] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                      {getInitials(gig.provider?.name)}
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="text-sm font-bold text-[#222325] hover:underline truncate">
-                        {gig.provider?.name || 'Top Consultant'}
+                        {gig.provider?.name || 'Verified Specialist'}
                       </span>
-                      <span className="text-[11px] text-[#74767e] shrink-0 font-medium">
-                        Level 2
-                      </span>
+                    </div>
+
+                    {/* Seller Level 2 Badge with 2 diamond icons */}
+                    <div className="flex items-center gap-1 shrink-0 text-xs font-bold text-[#74767e]">
+                      <span>Level 2</span>
+                      <div className="flex gap-0.5 text-[#1dbf73]">
+                        <span className="w-1.5 h-1.5 rotate-45 bg-[#1dbf73] inline-block" />
+                        <span className="w-1.5 h-1.5 rotate-45 bg-[#1dbf73] inline-block" />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Gig Title (Fiverr style "I will...") */}
-                  <h2 className="text-sm text-[#404145] group-hover:text-[#1dbf73] transition-colors line-clamp-2 leading-snug mb-2 font-normal">
+                  {/* 3. Gig Title (Fiverr style "I will create website web developer") */}
+                  <h2 className="text-[15px] font-normal text-[#222325] group-hover:text-[#1dbf73] line-clamp-2 leading-[1.3] my-1 transition-colors">
                     {gig.title}
                   </h2>
 
-                  {/* Star Rating & Review Count */}
-                  <div className="flex items-center gap-1 text-sm mb-3">
-                    <Star className="w-3.5 h-3.5 fill-[#222325] text-[#222325]" />
-                    <span className="font-bold text-[#222325]">
+                  {/* 4. Rating Row (Exact Fiverr Black Star + Bold Score + Count) */}
+                  <div className="flex items-center gap-1.5 text-sm my-1">
+                    <Star className="w-3.5 h-3.5 fill-[#222325] text-[#222325] shrink-0" />
+                    <strong className="font-bold text-[#222325]">
                       {gig.averageRating > 0 ? gig.averageRating.toFixed(1) : '5.0'}
-                    </span>
-                    <span className="text-[#74767e]">
+                    </strong>
+                    <span className="text-[#74767e] font-normal">
                       ({gig.totalReviews || gig.totalSold || 1})
                     </span>
                   </div>
 
-                  {/* Card Bottom: From $XX */}
-                  <div className="pt-2 border-t border-[#f0f0f0] mt-auto flex items-baseline justify-between">
-                    <span className="text-[11px] text-[#74767e] font-semibold">
-                      {gig.totalSold}+ orders
-                    </span>
-                    <div className="text-right">
-                      <span className="text-xs text-[#74767e] mr-1">From</span>
-                      <span className="text-base font-bold text-[#222325]">
-                        ${lowestPrice}
-                      </span>
-                    </div>
+                  {/* 5. Orders / Clients Served Note (Fiverr sub-label) */}
+                  {gig.totalSold > 0 && (
+                    <p className="text-xs text-[#74767e] font-normal mb-1">
+                      {gig.totalSold}+ clients served • {gig.totalSold} orders
+                    </p>
+                  )}
+
+                  {/* 6. Card Bottom Price (Exact Fiverr: From $XX) */}
+                  <div className="pt-2 mt-auto flex items-baseline justify-end">
+                    <span className="text-xs font-normal text-[#74767e] mr-1">From</span>
+                    <strong className="text-base text-[#222325] font-bold">
+                      ${lowestPrice}
+                    </strong>
                   </div>
                 </article>
               );
