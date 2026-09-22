@@ -1,35 +1,58 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Menu, 
-  X, 
-  Globe, 
-  LogOut, 
-  Briefcase, 
-  ShoppingBag, 
-  ShieldCheck, 
+import { getGigCategories, IGigCategory } from '@/lib/api';
+import {
+  Menu,
+  X,
+  Globe,
+  LogOut,
+  Briefcase,
+  ShoppingBag,
+  ShieldCheck,
   ChevronDown,
-  PlusCircle
+  PlusCircle,
+  Layers
 } from 'lucide-react';
+
+const DEFAULT_CATEGORIES: IGigCategory[] = [
+  { name: 'Web Development', count: 1 },
+  { name: 'Graphics & Design', count: 1 },
+  { name: 'Digital Marketing', count: 1 },
+  { name: 'Video & Animation', count: 1 },
+  { name: 'Writing & Translation', count: 1 },
+  { name: 'Business & Consulting', count: 1 },
+  { name: 'AI Services', count: 1 },
+  { name: 'Programming & Tech', count: 0 },
+  { name: 'Finance & Accounting', count: 0 },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [categories, setCategories] = useState<IGigCategory[]>(DEFAULT_CATEGORIES);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(true);
 
-  const subCategories = [
-    { label: 'Graphics & Design', href: '/gigs?category=Graphics+%26+Design' },
-    { label: 'Programming & Tech', href: '/gigs?category=Web+Development' },
-    { label: 'Digital Marketing', href: '/gigs?category=Digital+Marketing' },
-    { label: 'Video & Animation', href: '/gigs?category=Video+%26+Animation' },
-    { label: 'Writing & Translation', href: '/gigs?category=Writing+%26+Translation' },
-    { label: 'Business & Consulting', href: '/gigs?category=Business+Strategy' },
-    { label: 'AI Services', href: '/gigs?category=AI+%26+Machine+Learning' },
-    { label: 'Support & Appeals', href: '/support' },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicCategories() {
+      try {
+        const fetched = await getGigCategories();
+        if (isMounted && fetched.length > 0) {
+          setCategories(fetched);
+        }
+      } catch (err) {
+        console.error('Error fetching gig categories:', err);
+      }
+    }
+    loadDynamicCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const getInitials = (name: string) => {
     return name
@@ -45,7 +68,7 @@ export default function Navbar() {
       {/* Top Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18 sm:h-20">
-          
+
           {/* Logo (Fiverr style with green dot) */}
           <Link href="/" className="flex items-center gap-1 group">
             <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">
@@ -227,27 +250,42 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Fiverr Secondary Category Navigation Bar */}
+      {/* Fiverr Secondary Category Navigation Bar (Dynamic from Backend API) */}
       <div className="hidden lg:block border-t border-slate-100 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ul className="flex items-center justify-between text-xs sm:text-sm font-medium text-slate-600 py-2.5 overflow-x-auto scrollbar-none">
-            {subCategories.map((sub) => (
-              <li key={sub.label} className="shrink-0">
+          <nav aria-label="Gig Categories">
+            <ul className="flex items-center gap-7 text-xs sm:text-[13px] font-medium text-slate-600 py-2.5 overflow-x-auto scrollbar-none whitespace-nowrap">
+              {categories.map((cat) => (
+                <li key={cat.name} className="shrink-0">
+                  <Link
+                    href={`/gigs?category=${encodeURIComponent(cat.name)}`}
+                    className="group flex items-center gap-1.5 pb-1 border-b-2 border-transparent hover:border-[#1dbf73] hover:text-[#1dbf73] transition-all"
+                  >
+                    <span>{cat.name}</span>
+                    {cat.count !== undefined && cat.count > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 font-semibold bg-emerald-50 text-emerald-600 rounded-full border border-emerald-200/60 group-hover:bg-[#1dbf73] group-hover:text-white transition-colors">
+                        {cat.count}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+              <li className="shrink-0 ml-auto border-l border-slate-200 pl-4">
                 <Link
-                  href={sub.href}
-                  className="hover:text-[#1dbf73] hover:border-b-2 hover:border-[#1dbf73] pb-2 transition-all block"
+                  href="/gigs"
+                  className="text-xs font-semibold text-[#1dbf73] hover:underline"
                 >
-                  {sub.label}
+                  All Gigs &rarr;
                 </Link>
               </li>
-            ))}
-          </ul>
+            </ul>
+          </nav>
         </div>
       </div>
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-6 space-y-4">
+        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-6 space-y-4 max-h-[85vh] overflow-y-auto">
           {user && (
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 mb-2">
               <p className="text-xs font-bold text-slate-900">{user.name}</p>
@@ -264,7 +302,7 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
               className="py-1 hover:text-[#1dbf73]"
             >
-              Explore Gigs
+              Explore All Gigs
             </Link>
             <Link
               href="/providers"
@@ -301,6 +339,41 @@ export default function Navbar() {
             >
               Support &amp; Appeals
             </Link>
+          </div>
+
+          {/* Dynamic Categories Section in Mobile Drawer */}
+          <div className="pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+              className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 py-1.5"
+            >
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#1dbf73]" />
+                Gig Categories
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${mobileCategoriesOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {mobileCategoriesOpen && (
+              <div className="mt-2 space-y-1 pl-1">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.name}
+                    href={`/gigs?category=${encodeURIComponent(cat.name)}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-emerald-50 hover:text-[#1dbf73] transition-colors"
+                  >
+                    <span>{cat.name}</span>
+                    {cat.count !== undefined && cat.count > 0 && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                        {cat.count}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">

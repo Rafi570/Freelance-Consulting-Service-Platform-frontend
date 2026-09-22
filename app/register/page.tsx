@@ -5,16 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { registerUser, resendOtp } from '@/lib/api';
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  Briefcase, 
-  DollarSign, 
-  AlertCircle, 
-  ArrowRight, 
-  CheckCircle2, 
-  ShieldCheck, 
+import {
+  User,
+  Mail,
+  Lock,
+  Briefcase,
+  DollarSign,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  ShieldCheck,
   KeyRound,
   RefreshCw
 } from 'lucide-react';
@@ -127,10 +127,10 @@ export default function RegisterPage() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
       <div className="w-full max-w-lg space-y-6">
-        
+
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
-          
+
           {/* Header */}
           <div className="text-center mb-6">
             <Link href="/" className="inline-block text-2xl font-extrabold tracking-tight text-slate-900 font-sans">
@@ -165,7 +165,7 @@ export default function RegisterPage() {
           {/* STEP 1: Registration Form */}
           {step === 1 && (
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              
+
               {/* Account Type Selector (Fiverr Style) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2">
@@ -175,11 +175,10 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setRole('CLIENT')}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      role === 'CLIENT'
-                        ? 'border-[#1dbf73] bg-emerald-50/50 text-slate-900 ring-1 ring-[#1dbf73]'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    }`}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${role === 'CLIENT'
+                      ? 'border-[#1dbf73] bg-emerald-50/50 text-slate-900 ring-1 ring-[#1dbf73]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
                   >
                     <span className="text-base block mb-0.5">👤</span>
                     <span className="text-xs font-bold block">Hire Talent</span>
@@ -189,11 +188,10 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setRole('PROVIDER')}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      role === 'PROVIDER'
-                        ? 'border-[#1dbf73] bg-emerald-50/50 text-slate-900 ring-1 ring-[#1dbf73]'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    }`}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${role === 'PROVIDER'
+                      ? 'border-[#1dbf73] bg-emerald-50/50 text-slate-900 ring-1 ring-[#1dbf73]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      }`}
                   >
                     <span className="text-base block mb-0.5">💼</span>
                     <span className="text-xs font-bold block">Work as Consultant</span>
@@ -342,7 +340,7 @@ export default function RegisterPage() {
           {/* STEP 2: OTP Verification Form */}
           {step === 2 && (
             <form onSubmit={handleOtpSubmit} className="space-y-5">
-              
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2 text-center">
                   Enter 6-Digit Code

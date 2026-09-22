@@ -135,3 +135,29 @@ export async function resendOtp(email: string) {
 
   return data;
 }
+
+export interface IGigCategory {
+  name: string;
+  count?: number;
+}
+
+export async function getGigCategories(): Promise<IGigCategory[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/gigs/categories`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    if (res.ok && data.success && Array.isArray(data.data)) {
+      return data.data.map((item: any) =>
+        typeof item === 'string'
+          ? { name: item, count: 0 }
+          : { name: item.name || String(item), count: item.count ?? 0 }
+      );
+    }
+    return [];
+  } catch (err) {
+    console.error('Failed to fetch gig categories:', err);
+    return [];
+  }
+}
+

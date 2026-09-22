@@ -50,10 +50,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
       <div className="w-full max-w-md space-y-6">
-        
+
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
-          
+
           {/* Header */}
           <div className="text-center mb-6">
             <Link href="/" className="inline-block text-2xl font-extrabold tracking-tight text-slate-900 font-sans">
@@ -107,7 +107,7 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
+
             {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">

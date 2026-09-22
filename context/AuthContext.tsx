@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { 
-  IUser, 
-  getAuthToken, 
-  getStoredUser, 
-  clearAuthSession, 
-  loginUser, 
-  verifyEmailOtp, 
-  setAuthSession 
+import {
+  IUser,
+  getAuthToken,
+  getStoredUser,
+  clearAuthSession,
+  loginUser,
+  verifyEmailOtp,
+  setAuthSession
 } from '@/lib/api';
 
 interface AuthContextType {
