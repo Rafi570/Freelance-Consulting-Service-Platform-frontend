@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { Globe, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
@@ -50,7 +51,7 @@ export default function Footer() {
         { label: 'Unlimited Tier ($15/mo)', href: '/register?role=PROVIDER' },
         { label: 'Stripe Escrow Guarantee', href: '/support' },
         { label: 'Cloudinary Portfolios', href: '/support' },
-        { label: 'Super Admin Console', href: '/login' },
+        { label: 'Super Admin Console', href: '#' },
       ],
     },
   ];
@@ -86,11 +87,9 @@ export default function Footer() {
         <div className="mt-12 pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           
           {/* Logo & Copyright */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-xl font-extrabold text-slate-900">
-              ConsulSphere<span className="text-[#1dbf73]">.</span>
-            </Link>
-            <span>© {new Date().getFullYear()} ConsulSphere International Ltd.</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <Logo size="sm" />
+            <span className="text-slate-500">© {new Date().getFullYear()} ConsulSphere International Ltd. All rights reserved.</span>
           </div>
 
           {/* Right Extras */}

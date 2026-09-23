@@ -174,6 +174,7 @@ export default function GigsShowcase() {
   };
 
   const toggleLike = (e: React.MouseEvent, gigId: string) => {
+    e.preventDefault();
     e.stopPropagation();
     setLikedGigs((prev) => ({ ...prev, [gigId]: !prev[gigId] }));
   };
@@ -602,9 +603,9 @@ export default function GigsShowcase() {
               const isLiked = likedGigs[gig.id] || false;
 
               return (
-                <article
+                <Link
                   key={gig.id}
-                  onClick={() => setSelectedGigModal(gig)}
+                  href={`/gigs/${gig.id}`}
                   className="group relative flex flex-col cursor-pointer bg-white"
                 >
                   {/* 1. Image Container (16:10 Ratio with Rounded Corners like Fiverr) */}
@@ -702,7 +703,7 @@ export default function GigsShowcase() {
                       ${lowestPrice}
                     </strong>
                   </div>
-                </article>
+                </Link>
               );
             })}
           </div>

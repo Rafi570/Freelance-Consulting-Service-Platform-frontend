@@ -10,6 +10,7 @@ import {
   verifyEmailOtp,
   setAuthSession
 } from '@/lib/api';
+import AuthModal from '@/components/AuthModal';
 
 interface AuthContextType {
   user: IUser | null;
@@ -19,6 +20,10 @@ interface AuthContextType {
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
   setSession: (token: string, user: IUser) => void;
+  authModalOpen: boolean;
+  authModalTab: 'login' | 'register';
+  openAuthModal: (tab?: 'login' | 'register') => void;
+  closeAuthModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +32,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<IUser | null>(() => getStoredUser());
   const [token, setToken] = useState<string | null>(() => getAuthToken());
   const [isLoading, setIsLoading] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+
+  const openAuthModal = (tab: 'login' | 'register' = 'login') => {
+    setAuthModalTab(tab);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -72,9 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyOtp,
         logout,
         setSession,
+        authModalOpen,
+        authModalTab,
+        openAuthModal,
+        closeAuthModal,
       }}
     >
       {children}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={closeAuthModal}
+        initialTab={authModalTab}
+      />
     </AuthContext.Provider>
   );
 }

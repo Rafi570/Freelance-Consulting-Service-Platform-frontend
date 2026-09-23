@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { useAuth } from '@/context/AuthContext';
 import { getGigCategories, IGigCategory } from '@/lib/api';
 import {
@@ -30,7 +31,7 @@ const DEFAULT_CATEGORIES: IGigCategory[] = [
 ];
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, openAuthModal } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [categories, setCategories] = useState<IGigCategory[]>(DEFAULT_CATEGORIES);
@@ -69,12 +70,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18 sm:h-20">
 
-          {/* Logo (Fiverr style with green dot) */}
-          <Link href="/" className="flex items-center gap-1 group">
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-sans">
-              ConsulSphere<span className="text-[#1dbf73]">.</span>
-            </span>
-          </Link>
+          {/* Logo (Fiverr style with green squircle emblem and dot) */}
+          <Logo size="md" />
 
           {/* Desktop Right Links (Fiverr Style) */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
@@ -206,19 +203,21 @@ export default function Navbar() {
             ) : (
               /* If Unauthenticated: Show Sign In & Join */
               <>
-                <Link
-                  href="/login"
-                  className="hover:text-[#1dbf73] transition-colors"
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login')}
+                  className="hover:text-[#1dbf73] transition-colors font-bold cursor-pointer text-sm"
                 >
                   Sign in
-                </Link>
+                </button>
 
-                <Link
-                  href="/register"
-                  className="px-4 py-2 rounded border border-[#1dbf73] text-[#1dbf73] hover:bg-[#1dbf73] hover:text-white transition-colors duration-200 font-bold"
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('register')}
+                  className="px-4 py-2 rounded-xl border border-[#1dbf73] text-[#1dbf73] hover:bg-[#1dbf73] hover:text-white transition-colors duration-200 font-bold cursor-pointer"
                 >
                   Join
-                </Link>
+                </button>
               </>
             )}
           </nav>
@@ -226,12 +225,13 @@ export default function Navbar() {
           {/* Mobile Menu Toggle Button */}
           <div className="flex md:hidden items-center gap-2">
             {!user ? (
-              <Link
-                href="/register"
-                className="px-3 py-1.5 text-xs font-bold rounded border border-[#1dbf73] text-[#1dbf73] hover:bg-[#1dbf73] hover:text-white"
+              <button
+                type="button"
+                onClick={() => openAuthModal('register')}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-[#1dbf73] text-[#1dbf73] hover:bg-[#1dbf73] hover:text-white cursor-pointer"
               >
                 Join
-              </Link>
+              </button>
             ) : (
               <div className="w-7 h-7 rounded-full bg-[#1dbf73] text-white flex items-center justify-center font-bold text-xs">
                 {getInitials(user.name || 'User')}
@@ -390,20 +390,26 @@ export default function Navbar() {
               </button>
             ) : (
               <>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="w-full py-2.5 text-center rounded border border-slate-200 text-slate-700 font-bold text-sm"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    openAuthModal('login');
+                  }}
+                  className="w-full py-2.5 text-center rounded-xl border border-slate-200 text-slate-700 font-bold text-sm cursor-pointer"
                 >
                   Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="w-full py-2.5 text-center rounded bg-[#1dbf73] text-white font-bold text-sm shadow-sm"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    openAuthModal('register');
+                  }}
+                  className="w-full py-2.5 text-center rounded-xl bg-[#1dbf73] text-white font-bold text-sm shadow-sm cursor-pointer"
                 >
                   Join ConsulSphere
-                </Link>
+                </button>
               </>
             )}
           </div>

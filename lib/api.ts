@@ -276,4 +276,96 @@ export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse
   return data.data;
 }
 
+export async function getGigById(id: string): Promise<IGig> {
+  const res = await fetch(`${API_BASE_URL}/gigs/${id}`, {
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Gig not found');
+  }
+
+  return data.data;
+}
+
+export interface IGigReviewsResponse {
+  gigId: string;
+  totalReviews: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+  reviews: Array<{
+    id: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    client: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }>;
+}
+
+export async function getGigReviews(gigId: string): Promise<IGigReviewsResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/reviews/gig/${gigId}`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return data.data;
+    }
+    return {
+      gigId,
+      totalReviews: 0,
+      averageRating: 5,
+      ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      reviews: [],
+    };
+  } catch (err) {
+    console.error('Failed to load reviews:', err);
+    return {
+      gigId,
+      totalReviews: 0,
+      averageRating: 5,
+      ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      reviews: [],
+    };
+  }
+}
+
+export async function createOrder(gigId: string, packageId: string, requirements?: string) {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to place an order.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      gigId,
+      packageId,
+      requirements: requirements || 'Standard consultation requirements',
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to place order.');
+  }
+
+  return data.data;
+}
+
 
