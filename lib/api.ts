@@ -90,6 +90,22 @@ export async function loginUser(email: string, password: string): Promise<ILogin
   return data;
 }
 
+export async function loginUserWithGoogle(idToken: string): Promise<ILoginResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/google-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Google Login failed.');
+  }
+
+  setAuthSession(data.data.accessToken, data.data.user);
+  return data;
+}
+
 export async function registerUser(payload: IRegisterPayload) {
   const res = await fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',

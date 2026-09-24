@@ -7,16 +7,19 @@ import {
   getStoredUser,
   clearAuthSession,
   loginUser,
+  loginUserWithGoogle,
   verifyEmailOtp,
   setAuthSession
 } from '@/lib/api';
 import AuthModal from '@/components/AuthModal';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 interface AuthContextType {
   user: IUser | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
   setSession: (token: string, user: IUser) => void;
@@ -55,6 +58,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      const res = await loginUserWithGoogle(idToken);
+      setToken(res.data.accessToken);
+      setUser(res.data.user);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const verifyOtp = async (email: string, otp: string) => {
     setIsLoading(true);
     try {
@@ -78,29 +92,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   };
 
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '1029695050935-1f0tk8ulr5dq396kf4ll5c36e8ud7k3s.apps.googleusercontent.com';
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        login,
-        verifyOtp,
-        logout,
-        setSession,
-        authModalOpen,
-        authModalTab,
-        openAuthModal,
-        closeAuthModal,
-      }}
-    >
-      {children}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={closeAuthModal}
-        initialTab={authModalTab}
-      />
-    </AuthContext.Provider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthContext.Provider
+        value={{
+          user,
+          token,
+          isLoading,
+          login,
+          loginWithGoogle,
+          verifyOtp,
+          logout,
+          setSession,
+          authModalOpen,
+          authModalTab,
+          openAuthModal,
+          closeAuthModal,
+        }}
+      >
+        {children}
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={closeAuthModal}
+          initialTab={authModalTab}
+        />
+      </AuthContext.Provider>
+    </GoogleOAuthProvider>
   );
 }
 

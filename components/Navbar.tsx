@@ -90,12 +90,13 @@ export default function Navbar() {
             </Link>
 
             {(!user || user.role === 'CLIENT') && (
-              <Link
-                href="/register?role=PROVIDER"
-                className="hover:text-[#1dbf73] transition-colors"
+              <button
+                type="button"
+                onClick={() => openAuthModal('register')}
+                className="hover:text-[#1dbf73] transition-colors cursor-pointer"
               >
                 Become a Provider
-              </Link>
+              </button>
             )}
 
             <div className="flex items-center gap-1 text-slate-500 hover:text-slate-800 cursor-pointer">
