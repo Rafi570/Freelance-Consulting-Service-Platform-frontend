@@ -105,14 +105,6 @@ export default function Navbar() {
               <span>English</span>
             </div>
 
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition-all shadow-xs"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-            </Link>
-
             {/* If Authenticated: User Menu */}
             {user ? (
               <div className="relative">
@@ -144,14 +136,16 @@ export default function Navbar() {
                       <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
                     </div>
 
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors mb-1"
-                    >
-                      <LayoutDashboard className="w-4 h-4 text-emerald-600" />
-                      <span>Dashboard</span>
-                    </Link>
+                    {user.role !== 'CLIENT' && (
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors mb-1"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-emerald-600" />
+                        <span>Dashboard</span>
+                      </Link>
+                    )}
 
                     <Link
                       href="/orders"
@@ -316,6 +310,16 @@ export default function Navbar() {
           )}
 
           <div className="flex flex-col space-y-3 font-semibold text-sm text-slate-700">
+            {user && user.role !== 'CLIENT' && (
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="py-1 flex items-center gap-2 text-slate-900 font-bold hover:text-[#1dbf73]"
+              >
+                <LayoutDashboard className="w-4 h-4 text-emerald-600" />
+                <span>Dashboard</span>
+              </Link>
+            )}
             <Link
               href="/gigs"
               onClick={() => setMobileOpen(false)}

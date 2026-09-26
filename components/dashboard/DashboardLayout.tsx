@@ -1,50 +1,239 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardNavbar from './DashboardNavbar';
-import { Settings, X, Shield, Briefcase, User, Sparkles } from 'lucide-react';
+import { Lock, ShieldAlert, LogIn, ArrowLeft, RefreshCw, LayoutDashboard } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   initialRole?: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT';
+  allowedRoles?: ('PROVIDER' | 'SUPER_ADMIN' | 'CLIENT')[];
 }
 
 export default function DashboardLayout({
   children,
   initialRole,
+  allowedRoles,
 }: DashboardLayoutProps) {
-  const { user } = useAuth();
+  const { user, isHydrated, openAuthModal } = useAuth();
+  const pathname = usePathname();
 
-  // If user is logged in, use their role, else fallback to initialRole or 'PROVIDER'
-  const [activeRole, setActiveRole] = useState<'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT'>(
-    () => {
-      if (initialRole) return initialRole;
-      if (user?.role === 'SUPER_ADMIN') return 'SUPER_ADMIN';
-      if (user?.role === 'PROVIDER') return 'PROVIDER';
-      if (user?.role === 'CLIENT') return 'CLIENT';
-      return 'PROVIDER';
-    }
-  );
-
+  // Role is strictly driven by the logged-in user's role
+  const [activeRole, setActiveRole] = useState<'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT'>('PROVIDER');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Sync with auth user role if user logs in
   useEffect(() => {
-    if (user?.role && !initialRole) {
+    if (user?.role) {
       setActiveRole(user.role);
     }
-  }, [user, initialRole]);
+  }, [user]);
 
+  // Allow Super Admin to preview other roles if requested, but regular users cannot escalate
+  const handleRoleChange = (newRole: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT') => {
+    if (user?.role === 'SUPER_ADMIN') {
+      setActiveRole(newRole);
+    }
+  };
+
+  // 1. Session Hydration Loading State
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
+          <p className="text-xs font-bold text-slate-600 tracking-wide uppercase">
+            Verifying Authentication...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated (Logged Out) State Guard
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.06)] text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center shadow-xs">
+            <Lock className="w-8 h-8 stroke-[2.2]" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+              Access Restricted
+            </span>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+              Authentication Required
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              You must be signed in to access the ConsulSphere Dashboard, view active contracts, manage services, and review platform operations.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              href="/"
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Home</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => openAuthModal('login')}
+              className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In Now</span>
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Don&apos;t have an account?{' '}
+            <button
+              type="button"
+              onClick={() => openAuthModal('register')}
+              className="text-[#1dbf73] font-bold hover:underline cursor-pointer"
+            >
+              Join ConsulSphere
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Client Role Guard (Clients do not have a dashboard)
+  if (user.role === 'CLIENT') {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.06)] text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 mx-auto flex items-center justify-center shadow-xs">
+            <LayoutDashboard className="w-8 h-8 stroke-[2.2]" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+              Client Marketplace
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Dashboard is reserved for service providers and administrators. You can browse gigs and hire consultants directly from the marketplace.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/"
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Home Page</span>
+            </Link>
+
+            <Link
+              href="/gigs"
+              className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+            >
+              <span>Explore Gigs</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Super Admin Route Guard
+  // Any route under /admin, /dashboard/users, or /dashboard/admin requires SUPER_ADMIN role
+  const isAdminRoute =
+    pathname?.startsWith('/admin') ||
+    pathname === '/dashboard/users' ||
+    pathname?.startsWith('/dashboard/admin') ||
+    (allowedRoles && allowedRoles.includes('SUPER_ADMIN') && !allowedRoles.includes('CLIENT') && !allowedRoles.includes('PROVIDER'));
+
+  if (isAdminRoute && user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.06)] text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 mx-auto flex items-center justify-center shadow-xs">
+            <ShieldAlert className="w-8 h-8 stroke-[2.2]" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
+              403 Forbidden
+            </span>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+              Access Denied: Super Admin Only
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              You do not have administrative privileges to manage platform users or access admin operations.
+              You are currently signed in as <strong className="text-slate-800">{user.name}</strong> with role{' '}
+              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700">
+                {user.role}
+              </span>.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              href="/dashboard"
+              className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Go to My Dashboard</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Home Page</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Role Guard for Explicit allowedRoles
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.06)] text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-extrabold text-slate-800">Unauthorized Section</h2>
+            <p className="text-xs text-slate-500">
+              This section is reserved for {allowedRoles.join(', ')} users.
+            </p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800"
+          >
+            Go to My Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Authorized Render
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-slate-800 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
       <div className="flex flex-1">
         {/* Sidebar */}
         <DashboardSidebar
           role={activeRole}
-          onRoleChange={setActiveRole}
+          onRoleChange={user.role === 'SUPER_ADMIN' ? handleRoleChange : undefined}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -54,7 +243,7 @@ export default function DashboardLayout({
           {/* Top Navbar */}
           <DashboardNavbar
             role={activeRole}
-            onRoleChange={setActiveRole}
+            onRoleChange={user.role === 'SUPER_ADMIN' ? handleRoleChange : undefined}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
 
@@ -68,7 +257,7 @@ export default function DashboardLayout({
 
           {/* Footer note in dashboard */}
           <footer className="px-4 sm:px-6 lg:px-8 py-4 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 gap-2">
-            <p>© {new Date().getFullYear()} ConsulSphere Dashboard. Inspired by Soft UI &amp; Creative Tim aesthetics.</p>
+            <p>© {new Date().getFullYear()} ConsulSphere Dashboard. All rights reserved.</p>
             <div className="flex items-center gap-4">
               <span className="hover:text-slate-600 cursor-pointer">Privacy Policy</span>
               <span className="hover:text-slate-600 cursor-pointer">Licensing</span>
@@ -77,120 +266,6 @@ export default function DashboardLayout({
           </footer>
         </div>
       </div>
-
-      {/* Floating Gear Settings Button (bottom right - exactly like screenshot) */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="w-11 h-11 rounded-full bg-white text-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-slate-200 flex items-center justify-center hover:scale-105 hover:shadow-lg transition-all cursor-pointer group"
-          title="Dashboard Preferences"
-        >
-          <Settings className="w-5 h-5 text-slate-700 group-hover:rotate-45 transition-transform duration-300" />
-        </button>
-      </div>
-
-      {/* Settings Modal / Quick Drawer */}
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                  ⚙
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Dashboard Configurator</h3>
-                  <p className="text-[11px] text-slate-400">Preview Layout Roles &amp; Styles</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSettingsOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="py-4 space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-2">
-                  Active Layout Role
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveRole('PROVIDER');
-                      setSettingsOpen(false);
-                    }}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                      activeRole === 'PROVIDER'
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <Briefcase className="w-4 h-4 mx-auto mb-1 text-emerald-600" />
-                    <span className="text-xs block">Provider</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveRole('SUPER_ADMIN');
-                      setSettingsOpen(false);
-                    }}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                      activeRole === 'SUPER_ADMIN'
-                        ? 'border-purple-500 bg-purple-50 text-purple-800 font-bold shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <Shield className="w-4 h-4 mx-auto mb-1 text-purple-600" />
-                    <span className="text-xs block">Admin</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveRole('CLIENT');
-                      setSettingsOpen(false);
-                    }}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                      activeRole === 'CLIENT'
-                        ? 'border-blue-500 bg-blue-50 text-blue-800 font-bold shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <User className="w-4 h-4 mx-auto mb-1 text-blue-600" />
-                    <span className="text-xs block">Client</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs text-slate-600 space-y-1">
-                <p className="font-semibold text-slate-800 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  Role Layout Preview Ready
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Switch between <strong>Provider</strong>, <strong>Admin</strong>, and <strong>Client</strong> to examine their specific navigation links, metric metrics, charts, and tables!
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-md"
-              >
-                Close Configurator
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

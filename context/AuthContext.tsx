@@ -18,6 +18,7 @@ interface AuthContextType {
   user: IUser | null;
   token: string | null;
   isLoading: boolean;
+  isHydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
@@ -32,11 +33,32 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<IUser | null>(() => getStoredUser());
-  const [token, setToken] = useState<string | null>(() => getAuthToken());
+  const [user, setUser] = useState<IUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+
+  // Hydrate auth state from localStorage on client mount
+  React.useEffect(() => {
+    try {
+      const storedUser = getStoredUser();
+      const storedToken = getAuthToken();
+      if (storedUser && storedToken) {
+        setUser(storedUser);
+        setToken(storedToken);
+      } else {
+        setUser(null);
+        setToken(null);
+      }
+    } catch {
+      setUser(null);
+      setToken(null);
+    } finally {
+      setIsHydrated(true);
+    }
+  }, []);
 
   const openAuthModal = (tab: 'login' | 'register' = 'login') => {
     setAuthModalTab(tab);
@@ -101,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user,
           token,
           isLoading,
+          isHydrated,
           login,
           loginWithGoogle,
           verifyOtp,

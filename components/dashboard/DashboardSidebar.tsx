@@ -2,28 +2,17 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Table,
-  CreditCard,
-  Box,
-  ArrowLeftRight,
-  Bell,
   User,
   LogIn,
-  UserPlus,
-  HelpCircle,
-  ExternalLink,
+  LogOut,
   Users,
-  Briefcase,
-  ShoppingBag,
-  Star,
-  ShieldCheck,
-  ChevronRight,
-  Sparkles
+  ShoppingBag
 } from 'lucide-react';
-import Logo from '@/components/Logo';
 
 interface SidebarProps {
   role: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT';
@@ -39,6 +28,8 @@ export default function DashboardSidebar({
   onClose,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
 
   // Navigation items based on role
   const getNavItems = () => {
@@ -46,33 +37,13 @@ export default function DashboardSidebar({
       return [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { label: 'Users & Roles', href: '/dashboard/users', icon: Users },
-        { label: 'Gig Management', href: '/dashboard/gigs', icon: Briefcase },
-        { label: 'Platform Orders', href: '/dashboard/orders', icon: ShoppingBag },
-        { label: 'Billing & Escrow', href: '/dashboard/billing', icon: CreditCard },
-        { label: 'Analytics & RTL', href: '/dashboard/analytics', icon: ArrowLeftRight },
-        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
-      ];
-    }
-
-    if (role === 'CLIENT') {
-      return [
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'My Orders', href: '/orders', icon: ShoppingBag },
-        { label: 'Consultants', href: '/providers', icon: Users },
-        { label: 'Billing & Invoices', href: '/dashboard/billing', icon: CreditCard },
-        { label: 'Saved Services', href: '/gigs', icon: Box },
-        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
       ];
     }
 
     // Default: PROVIDER
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Tables & Gigs', href: '/dashboard/tables', icon: Table },
-      { label: 'Billing & Payouts', href: '/dashboard/billing', icon: CreditCard },
-      { label: 'Virtual Reality', href: '/dashboard/vr', icon: Box },
-      { label: 'RTL & Analytics', href: '/dashboard/rtl', icon: ArrowLeftRight },
-      { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
+      { label: 'Explore Gigs', href: '/gigs', icon: Table },
     ];
   };
 
@@ -80,19 +51,15 @@ export default function DashboardSidebar({
 
   const accountPages = [
     { label: 'Profile', href: '/dashboard/profile', icon: User },
-    { label: 'Browse Market', href: '/gigs', icon: ExternalLink },
     { label: 'Back to Home', href: '/', icon: LogIn },
   ];
 
-  const roleLabel =
-    role === 'SUPER_ADMIN' ? 'Super Admin' : role === 'PROVIDER' ? 'Provider Pro' : 'Client Mode';
+  const roleLabel = role === 'SUPER_ADMIN' ? 'Super Admin' : 'Provider Pro';
 
   const roleColor =
     role === 'SUPER_ADMIN'
       ? 'bg-purple-100 text-purple-700 border-purple-200'
-      : role === 'PROVIDER'
-      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-      : 'bg-blue-100 text-blue-700 border-blue-200';
+      : 'bg-emerald-100 text-emerald-700 border-emerald-200';
 
   return (
     <>
@@ -203,34 +170,23 @@ export default function DashboardSidebar({
                   </Link>
                 );
               })}
-            </div>
-          </div>
-        </div>
 
-        {/* Bottom CTA Block (Matches Creative Tim Screenshot) */}
-        <div className="p-4 pt-0">
-          <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2 text-center">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-800">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span>Need Assistance?</span>
-            </div>
-            <p className="text-[11px] text-slate-500 leading-tight">
-              Please check our platform documentation & guides.
-            </p>
-
-            <div className="pt-1 space-y-1.5">
-              <Link
-                href="/guides"
-                className="w-full inline-flex items-center justify-center gap-1 py-2 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs"
-              >
-                <span>Documentation</span>
-              </Link>
-              <Link
-                href="/pricing"
-                className="w-full inline-flex items-center justify-center gap-1 py-2 px-3 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-md shadow-slate-900/10"
-              >
-                <span>Upgrade to pro</span>
-              </Link>
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    if (onClose) onClose();
+                    router.push('/');
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-rose-100 text-rose-600 shadow-2xs">
+                    <LogOut className="w-3.5 h-3.5 stroke-[2.2]" />
+                  </div>
+                  <span>Sign Out</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

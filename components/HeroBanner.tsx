@@ -1,12 +1,13 @@
 import Link from 'next/link';
-import { 
-  Search, 
-  ShieldCheck, 
-  Palette, 
-  Code2, 
-  TrendingUp, 
-  Briefcase, 
-  Video, 
+import HeroSearchWithSuggestions from '@/components/HeroSearchWithSuggestions';
+import {
+  Search,
+  ShieldCheck,
+  Palette,
+  Code2,
+  TrendingUp,
+  Briefcase,
+  Video,
   FileText,
   Star,
   CheckCircle2,
@@ -100,10 +101,10 @@ export default function HeroBanner() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20 sm:pt-18 sm:pb-24 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-          
+
           {/* Left Column: Heading, Search & Popular Filters */}
           <div className="lg:col-span-6 flex flex-col space-y-6">
-            
+
             {/* Top Marketplace Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-xs font-semibold text-emerald-300 w-fit backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
@@ -124,27 +125,8 @@ export default function HeroBanner() {
               Hire vetted freelance professionals for design, marketing, tech, business strategy, video, and writing — backed by milestone escrow protection.
             </p>
 
-            {/* Fiverr-Style Live Search Form (Pure Server Component) */}
-            <form action="/gigs" method="GET" className="w-full max-w-xl pt-2">
-              <div className="flex items-center rounded-xl bg-white overflow-hidden shadow-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
-                <div className="flex items-center flex-1 px-3 py-2">
-                  <Search className="w-5 h-5 text-slate-400 mr-3 shrink-0" />
-                  <input
-                    type="text"
-                    name="searchTerm"
-                    placeholder="Search for any service (e.g. Logo Design, SEO, Web App)..."
-                    className="w-full bg-transparent text-slate-900 placeholder-slate-400 text-sm sm:text-base focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#1dbf73] hover:bg-[#19a463] text-white px-6 sm:px-8 py-3 rounded-lg text-sm sm:text-base font-semibold transition-colors duration-200 flex items-center justify-center shrink-0 cursor-pointer shadow-md"
-                >
-                  <span className="hidden sm:inline">Search</span>
-                  <Search className="w-5 h-5 sm:hidden" />
-                </button>
-              </div>
-            </form>
+            {/* Live Search Form with Suggestions */}
+            <HeroSearchWithSuggestions />
 
             {/* Popular Search Tags covering ALL disciplines */}
             <div className="flex flex-wrap items-center gap-2 pt-2 text-xs sm:text-sm text-emerald-200/90">
@@ -181,7 +163,7 @@ export default function HeroBanner() {
           {/* Right Column: Multi-Discipline Freelance Categories Mosaic (Shows all services!) */}
           <div className="lg:col-span-6">
             <div className="p-4 sm:p-6 rounded-3xl bg-emerald-950/40 border border-emerald-500/20 backdrop-blur-xl shadow-2xl">
-              
+
               <div className="flex items-center justify-between pb-4 border-b border-emerald-800/40 mb-4">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 font-mono">
                   Explore by Service Category

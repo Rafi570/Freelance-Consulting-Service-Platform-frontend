@@ -7,9 +7,9 @@ import Footer from '@/components/Footer';
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDashboard = pathname?.startsWith('/dashboard');
+  const isDashboardOrAdmin = pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin');
 
-  if (isDashboard) {
+  if (isDashboardOrAdmin) {
     return <main className="min-h-screen w-full bg-[#f8f9fa]">{children}</main>;
   }
 

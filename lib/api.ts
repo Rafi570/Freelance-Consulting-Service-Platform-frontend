@@ -384,4 +384,198 @@ export async function createOrder(gigId: string, packageId: string, requirements
   return data.data;
 }
 
+export interface IGetUsersParams {
+  searchTerm?: string;
+  role?: 'SUPER_ADMIN' | 'PROVIDER' | 'CLIENT' | string;
+  status?: 'ACTIVE' | 'BLOCKED' | 'SUSPENDED' | 'DRAFT' | string;
+  page?: number;
+  limit?: number;
+}
+
+export interface IUsersApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    meta: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPage: number;
+    };
+    data: IUser[];
+  };
+}
+
+export async function getAllUsers(params?: IGetUsersParams): Promise<IUsersApiResponse['data']> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const query = new URLSearchParams();
+  if (params?.searchTerm) query.append('searchTerm', params.searchTerm);
+  if (params?.role && params.role !== 'ALL') query.append('role', params.role);
+  if (params?.status && params.status !== 'ALL') query.append('status', params.status);
+  if (params?.page) query.append('page', String(params.page));
+  if (params?.limit) query.append('limit', String(params.limit));
+
+  const res = await fetch(`${API_BASE_URL}/users${query.toString() ? `?${query.toString()}` : ''}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch users');
+  }
+
+  return data.data;
+}
+
+export async function blockUser(userId: string, reason?: string): Promise<IUser> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/block`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      status: 'BLOCKED',
+      reason: reason || 'Violation of terms and guidelines',
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to block user');
+  }
+
+  return data.data;
+}
+
+export async function unblockUser(userId: string): Promise<IUser> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/unblock`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to unblock user');
+  }
+
+  return data.data;
+}
+
+export async function updateUserStatus(
+  userId: string,
+  status: 'ACTIVE' | 'BLOCKED' | 'SUSPENDED' | 'DRAFT',
+  reason?: string
+): Promise<IUser> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      status,
+      reason,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to update user status');
+  }
+
+  return data.data;
+}
+
+export async function getMyProviderProfile(): Promise<IUser> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/providers/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch provider profile');
+  }
+
+  return data.data;
+}
+
+export async function updateMyProviderProfile(payload: {
+  name?: string;
+  bio?: string;
+  skills?: string[];
+  phone?: string;
+  address?: string;
+  experience?: string;
+  portfolioUrl?: string;
+  hourlyRate?: number;
+}): Promise<IUser> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/providers/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to update provider profile');
+  }
+
+  // Update locally stored user profile if available
+  const stored = getStoredUser();
+  if (stored) {
+    const updated = {
+      ...stored,
+      name: payload.name ?? stored.name,
+      profile: {
+        ...stored.profile,
+        ...(data.data.profile || data.data),
+      },
+    };
+    setAuthSession(token, updated as any);
+  }
+
+  return data.data;
+}
+
 
