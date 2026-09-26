@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import LayoutShell from "@/components/LayoutShell";
 import { AuthProvider } from "@/context/AuthContext";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -36,9 +35,7 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakartaSans.variable} h-full`}>
       <body className="min-h-full flex flex-col font-sans bg-white text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
         <AuthProvider>
-          <Navbar />
-          <main className="flex-1 w-full">{children}</main>
-          <Footer />
+          <LayoutShell>{children}</LayoutShell>
         </AuthProvider>
       </body>
     </html>
