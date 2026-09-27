@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/context/AuthContext';
-import { registerUser } from '@/lib/api';
+import { registerUser, resendOtp } from '@/lib/api';
 import { GoogleLogin } from '@react-oauth/google';
 import {
   X,
@@ -62,6 +62,7 @@ export default function AuthModal({
 
   // Status state
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -126,13 +127,16 @@ export default function AuthModal({
     setLoading(true);
 
     try {
-      await registerUser({
+      const res = await registerUser({
         name: regName.trim(),
         email: regEmail.trim(),
         password: regPassword,
         role: regRole,
       });
       setRegStep(2);
+      if (res?.data?.otp) {
+        setRegOtp(res.data.otp);
+      }
       setSuccessMsg(`We sent a 6-digit verification code to ${regEmail}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -142,6 +146,28 @@ export default function AuthModal({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle Resend OTP
+  const handleResendOtp = async () => {
+    if (!regEmail || resending) return;
+    setResending(true);
+    setErrorMsg('');
+    try {
+      const res = await resendOtp(regEmail.trim());
+      if (res?.data?.otp) {
+        setRegOtp(res.data.otp);
+      }
+      setSuccessMsg(`A new verification code was sent to ${regEmail}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Failed to resend code.');
+      }
+    } finally {
+      setResending(false);
     }
   };
 
@@ -553,10 +579,31 @@ export default function AuthModal({
                   <button
                     type="submit"
                     disabled={loading || regOtp.length < 6}
-                    className="w-full py-3 px-4 rounded-xl bg-[#1dbf73] hover:bg-[#19a463] text-white text-xs font-black tracking-wide uppercase transition-all disabled:opacity-60 cursor-pointer"
+                    className="w-full py-3 px-4 rounded-xl bg-[#1dbf73] hover:bg-[#19a463] text-white text-xs font-black tracking-wide uppercase transition-all disabled:opacity-60 cursor-pointer shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30"
                   >
                     {loading ? 'Verifying...' : 'Verify & Continue'}
                   </button>
+
+                  <div className="flex items-center justify-between text-xs pt-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegStep(1);
+                        setErrorMsg('');
+                      }}
+                      className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resending}
+                      onClick={handleResendOtp}
+                      className="text-[#1dbf73] hover:underline font-bold disabled:opacity-50 cursor-pointer"
+                    >
+                      {resending ? 'Sending...' : 'Resend Code'}
+                    </button>
+                  </div>
                 </form>
               )}
             </div>
