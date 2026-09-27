@@ -1,7 +1,10 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import HeroSearchWithSuggestions from '@/components/HeroSearchWithSuggestions';
+import { getHeroData, IHeroDataResponse } from '@/lib/api';
 import {
-  Search,
   ShieldCheck,
   Palette,
   Code2,
@@ -11,231 +14,199 @@ import {
   FileText,
   Star,
   CheckCircle2,
-  Sparkles
+  Bot,
+  DollarSign,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 
-export default function HeroBanner() {
-  const popularTags = [
-    { label: 'Website Design', query: 'Website Design' },
-    { label: 'Logo & Branding', query: 'Logo Design' },
-    { label: 'SEO & Marketing', query: 'Digital Marketing' },
-    { label: 'Web & App Dev', query: 'Web Development' },
-    { label: 'Business Strategy', query: 'Business Strategy' },
-    { label: 'Video Editing', query: 'Video & Animation' },
-  ];
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  'Graphics & Design': Palette,
+  'Programming & Tech': Code2,
+  'Web Development': Code2,
+  'Digital Marketing': TrendingUp,
+  'Business & Consulting': Briefcase,
+  'Video & Animation': Video,
+  'Writing & Translation': FileText,
+  'AI Services': Bot,
+  'Finance & Accounting': DollarSign,
+};
 
-  const serviceCategories = [
-    {
-      title: 'Graphics & Design',
-      sub: 'Logo, Branding, UI/UX & 3D',
-      icon: Palette,
-      gigs: '15k+ Services',
-      rating: '4.9',
-      bg: 'from-pink-500/10 to-rose-500/5',
-      border: 'border-pink-500/20 hover:border-pink-400',
-      iconColor: 'text-pink-400 bg-pink-500/10',
-      href: '/gigs?category=Graphics+%26+Design',
+export default function HeroBanner() {
+  const [heroData, setHeroData] = useState<IHeroDataResponse>({
+    popularTags: [
+      { label: 'Next.js & React', query: 'Next.js' },
+      { label: 'Website Design', query: 'Website Design' },
+      { label: 'Logo & Branding', query: 'Logo Design' },
+      { label: 'AI Services', query: 'AI' },
+      { label: 'Digital Marketing', query: 'Digital Marketing' },
+      { label: 'Business Strategy', query: 'Business Strategy' },
+    ],
+    categories: [
+      { name: 'Web Development', count: 1 },
+      { name: 'Graphics & Design', count: 1 },
+      { name: 'Digital Marketing', count: 1 },
+      { name: 'Video & Animation', count: 1 },
+      { name: 'Writing & Translation', count: 1 },
+      { name: 'Business & Consulting', count: 1 },
+      { name: 'AI Services', count: 1 },
+    ],
+    stats: {
+      totalTalent: 12,
+      totalGigs: 8,
+      completedOrders: 158,
     },
-    {
-      title: 'Programming & Tech',
-      sub: 'Web, Mobile Apps & Cloud',
-      icon: Code2,
-      gigs: '18k+ Services',
-      rating: '4.98',
-      bg: 'from-emerald-500/10 to-teal-500/5',
-      border: 'border-emerald-500/20 hover:border-emerald-400',
-      iconColor: 'text-emerald-400 bg-emerald-500/10',
-      href: '/gigs?category=Web+Development',
-    },
-    {
-      title: 'Digital Marketing',
-      sub: 'SEO, Social Ads & Growth',
-      icon: TrendingUp,
-      gigs: '12k+ Services',
-      rating: '4.85',
-      bg: 'from-amber-500/10 to-yellow-500/5',
-      border: 'border-amber-500/20 hover:border-amber-400',
-      iconColor: 'text-amber-400 bg-amber-500/10',
-      href: '/gigs?category=Digital+Marketing',
-    },
-    {
-      title: 'Business & Consulting',
-      sub: 'Finance, Strategy & Legal',
-      icon: Briefcase,
-      gigs: '8k+ Services',
-      rating: '5.0',
-      bg: 'from-blue-500/10 to-indigo-500/5',
-      border: 'border-blue-500/20 hover:border-blue-400',
-      iconColor: 'text-blue-400 bg-blue-500/10',
-      href: '/gigs?category=Business+Strategy',
-    },
-    {
-      title: 'Video & Animation',
-      sub: 'Explainer, 3D & Reels',
-      icon: Video,
-      gigs: '9k+ Services',
-      rating: '4.92',
-      bg: 'from-purple-500/10 to-violet-500/5',
-      border: 'border-purple-500/20 hover:border-purple-400',
-      iconColor: 'text-purple-400 bg-purple-500/10',
-      href: '/gigs?category=Video+%26+Animation',
-    },
-    {
-      title: 'Writing & Translation',
-      sub: 'Copywriting, Blogs & Books',
-      icon: FileText,
-      gigs: '11k+ Services',
-      rating: '4.9',
-      bg: 'from-cyan-500/10 to-sky-500/5',
-      border: 'border-cyan-500/20 hover:border-cyan-400',
-      iconColor: 'text-cyan-400 bg-cyan-500/10',
-      href: '/gigs?category=Writing+%26+Translation',
-    },
-  ];
+  });
+
+  const [loadingHero, setLoadingHero] = useState<boolean>(true);
+
+  // Fetch dynamic Hero data from backend API
+  useEffect(() => {
+    let isMounted = true;
+    getHeroData()
+      .then((data) => {
+        if (!isMounted) return;
+        if (data) {
+          setHeroData(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load dynamic hero data:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingHero(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
-    <section className="relative bg-gradient-to-b from-[#01220d] via-[#023317] to-[#011809] text-white overflow-hidden">
-      {/* Ambient background glows */}
-      <div className="absolute top-0 right-1/4 w-[600px] h-[500px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-10 left-10 w-[500px] h-[450px] bg-[#1dbf73]/10 rounded-full blur-[130px] pointer-events-none" />
+    <section className="relative bg-[#04150c] text-white overflow-hidden">
+      {/* Animated ambient blobs */}
+      <div className="absolute -top-40 right-0 w-[520px] h-[520px] bg-emerald-500/10 rounded-full blur-[160px] pointer-events-none animate-blob-1" />
+      <div className="absolute bottom-0 -left-20 w-[420px] h-[420px] bg-[#1dbf73]/10 rounded-full blur-[150px] pointer-events-none animate-blob-2" />
+      <div className="absolute top-1/3 left-1/2 w-[300px] h-[300px] bg-teal-400/5 rounded-full blur-[130px] pointer-events-none animate-blob-3" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20 sm:pt-18 sm:pb-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+      {/* Subtle animated dot-grid texture */}
+      <div
+        className="absolute inset-0 opacity-[0.15] pointer-events-none animate-grid-pan"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+          maskImage:
+            'radial-gradient(ellipse 80% 60% at 50% 30%, black 40%, transparent 100%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 80% 60% at 50% 30%, black 40%, transparent 100%)',
+        }}
+      />
 
-          {/* Left Column: Heading, Search & Popular Filters */}
-          <div className="lg:col-span-6 flex flex-col space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-28 sm:pb-20 relative z-10">
 
-            {/* Top Marketplace Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-xs font-semibold text-emerald-300 w-fit backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Full-Service Freelance Marketplace &amp; Consulting</span>
-            </div>
+        {/* Centered, confident hero */}
+        <div className="flex flex-col items-center text-center">
 
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
-              Find the right{' '}
-              <span className="font-serif italic font-normal text-emerald-400">
-                freelance
-              </span>{' '}
-              service, right away
-            </h1>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-emerald-200 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Full-Service Freelance Marketplace &amp; Consulting</span>
+            <span className="text-white/30">•</span>
+            <span className="text-emerald-400 font-bold">{heroData.stats.completedOrders}+ Orders Done</span>
+          </div>
 
-            {/* Sub-headline explicitly indicating ALL service types */}
-            <p className="text-base sm:text-lg text-emerald-100/80 max-w-xl font-normal leading-relaxed">
-              Hire vetted freelance professionals for design, marketing, tech, business strategy, video, and writing — backed by milestone escrow protection.
-            </p>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] max-w-3xl">
+            Find the right{' '}
+            <span className="font-serif italic font-normal text-emerald-400">freelance</span>{' '}
+            service, right away
+          </h1>
 
-            {/* Live Search Form with Suggestions */}
+          <p className="mt-5 text-base sm:text-lg text-white/60 max-w-xl leading-relaxed">
+            Hire vetted professionals for design, marketing, tech, business
+            strategy, video, and writing — backed by milestone escrow protection.
+          </p>
+
+          {/* Dynamic Search with Backend API suggestions */}
+          <div className="mt-8 w-full max-w-2xl">
             <HeroSearchWithSuggestions />
-
-            {/* Popular Search Tags covering ALL disciplines */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 text-xs sm:text-sm text-emerald-200/90">
-              <span className="font-semibold text-white">Popular:</span>
-              {popularTags.map((tag) => (
-                <Link
-                  key={tag.query}
-                  href={`/gigs?searchTerm=${encodeURIComponent(tag.query)}`}
-                  className="px-3 py-1 rounded-full border border-emerald-500/30 text-emerald-100 hover:bg-white hover:text-[#013914] transition-all text-xs font-medium"
-                >
-                  {tag.label}
-                </Link>
-              ))}
-            </div>
-
-            {/* Value Guarantees */}
-            <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-emerald-200/80">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>100% Escrow Protection</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Verified Talent</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400 shrink-0" />
-                <span>Transparent 3-Tier Packages</span>
-              </div>
-            </div>
-
           </div>
 
-          {/* Right Column: Multi-Discipline Freelance Categories Mosaic (Shows all services!) */}
-          <div className="lg:col-span-6">
-            <div className="p-4 sm:p-6 rounded-3xl bg-emerald-950/40 border border-emerald-500/20 backdrop-blur-xl shadow-2xl">
-
-              <div className="flex items-center justify-between pb-4 border-b border-emerald-800/40 mb-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 font-mono">
-                  Explore by Service Category
-                </span>
-                <span className="text-xs font-medium text-emerald-400">
-                  Over 100,000+ Services
-                </span>
-              </div>
-
-              {/* 2x3 Grid of Diverse Freelance Categories */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {serviceCategories.map((cat) => {
-                  const Icon = cat.icon;
-                  return (
-                    <Link
-                      key={cat.title}
-                      href={cat.href}
-                      className={`group p-3.5 rounded-2xl bg-gradient-to-br ${cat.bg} border ${cat.border} hover:scale-[1.02] transition-all duration-200 flex items-start gap-3`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl ${cat.iconColor} flex items-center justify-center shrink-0`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
-                          {cat.title}
-                        </h3>
-                        <p className="text-[11px] text-emerald-100/70 truncate mt-0.5">
-                          {cat.sub}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-emerald-300/80">
-                          <span className="font-semibold">{cat.gigs}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-0.5 text-amber-300 font-semibold">
-                            ★ {cat.rating}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Bottom Category CTA */}
-              <div className="mt-4 pt-3 border-t border-emerald-800/40 flex items-center justify-between text-xs">
-                <span className="text-emerald-200/80">
-                  Need a tailored consulting package?
-                </span>
-                <Link
-                  href="/gigs"
-                  className="font-bold text-emerald-300 hover:text-white underline transition-colors"
-                >
-                  Browse all 20+ disciplines →
-                </Link>
-              </div>
-
-            </div>
+          {/* Dynamic Popular Tags from Backend API */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm">
+            <span className="text-white/40 mr-1 text-xs font-medium flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+              Popular:
+            </span>
+            {heroData.popularTags.map((tag) => (
+              <Link
+                key={tag.query}
+                href={`/gigs?searchTerm=${encodeURIComponent(tag.query)}`}
+                className="px-3.5 py-1.5 rounded-full border border-white/10 text-white/70 hover:bg-white hover:text-[#04150c] hover:border-white transition-all text-xs font-medium"
+              >
+                {tag.label}
+              </Link>
+            ))}
           </div>
 
+          {/* Trust badges with live platform stats */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/50">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              100% Escrow Protection
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{heroData.stats.totalTalent}+ Vetted Consultants</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span>{heroData.stats.completedOrders}+ Verified Deliveries</span>
+            </div>
+          </div>
         </div>
 
-        {/* Fiverr Trust Logos Bar */}
-        <div className="mt-16 pt-8 border-t border-emerald-800/50 flex flex-col sm:flex-row items-center justify-between gap-6 text-emerald-200/70 text-xs">
-          <span className="font-medium tracking-wider uppercase text-emerald-300">
-            Trusted by teams worldwide:
+        {/* Dynamic Category pill row from Backend API */}
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-3">
+          {heroData.categories.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.name] || Layers;
+            return (
+              <Link
+                key={cat.name}
+                href={`/gigs?category=${encodeURIComponent(cat.name)}`}
+                className="group flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/10 hover:border-emerald-400/50 hover:bg-white/[0.08] transition-all"
+              >
+                <Icon className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
+                  {cat.name}
+                </span>
+                {typeof cat.count === 'number' && cat.count > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300">
+                    {cat.count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+          <Link
+            href="/gigs"
+            className="px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:text-white transition-colors"
+          >
+            Browse all disciplines →
+          </Link>
+        </div>
+
+        {/* Trust logos */}
+        <div className="mt-16 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
+          <span className="text-[11px] font-medium tracking-wider uppercase text-white/40">
+            Trusted by teams worldwide
           </span>
-          <div className="flex flex-wrap items-center gap-8 sm:gap-12 font-bold tracking-widest text-sm text-white/85">
-            <span className="hover:text-emerald-400 transition-colors">META</span>
-            <span className="hover:text-emerald-400 transition-colors">GOOGLE</span>
-            <span className="hover:text-emerald-400 transition-colors">NETFLIX</span>
-            <span className="hover:text-emerald-400 transition-colors">P&amp;G</span>
-            <span className="hover:text-emerald-400 transition-colors">PAYPAL</span>
-            <span className="hover:text-emerald-400 transition-colors">SPOTIFY</span>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-10 text-sm font-bold tracking-wide text-white/40">
+            <span className="hover:text-white/80 transition-colors">META</span>
+            <span className="hover:text-white/80 transition-colors">GOOGLE</span>
+            <span className="hover:text-white/80 transition-colors">NETFLIX</span>
+            <span className="hover:text-white/80 transition-colors">P&amp;G</span>
+            <span className="hover:text-white/80 transition-colors">PAYPAL</span>
+            <span className="hover:text-white/80 transition-colors">SPOTIFY</span>
           </div>
         </div>
 

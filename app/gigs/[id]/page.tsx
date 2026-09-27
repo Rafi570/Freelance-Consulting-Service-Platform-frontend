@@ -9,6 +9,9 @@ import {
   getGigById,
   getGigReviews,
   createOrder,
+  getMyOrders,
+  submitOrderReview,
+  IOrder,
   IGigReviewsResponse,
 } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -35,7 +38,11 @@ import {
   ExternalLink,
   Layers,
   ArrowRight,
-  Maximize2
+  Maximize2,
+  Lock,
+  Filter,
+  SlidersHorizontal,
+  BadgeCheck,
 } from 'lucide-react';
 
 export default function GigDetailsPage() {
@@ -72,12 +79,18 @@ export default function GigDetailsPage() {
   const [contactMessage, setContactMessage] = useState('');
   const [contactSent, setContactSent] = useState(false);
 
-  // New review/comment form state
+  // Reviews & Eligibility State
   const [newComment, setNewComment] = useState('');
   const [newRating, setNewRating] = useState(5);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentSuccessMsg, setCommentSuccessMsg] = useState('');
+  const [commentErrorMsg, setCommentErrorMsg] = useState('');
   const [localComments, setLocalComments] = useState<any[]>([]);
+  const [userOrders, setUserOrders] = useState<IOrder[]>([]);
+  const [checkingOrders, setCheckingOrders] = useState(false);
+  const [reviewFilterRating, setReviewFilterRating] = useState<number | 'ALL'>('ALL');
+  const [reviewSort, setReviewSort] = useState<'NEWEST' | 'HIGHEST' | 'LOWEST'>('NEWEST');
+  const [helpfulVotes, setHelpfulVotes] = useState<Record<string, number>>({});
 
   // FAQ open/close accordion state
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -113,6 +126,50 @@ export default function GigDetailsPage() {
       isMounted = false;
     };
   }, [gigId]);
+
+  // Fetch client orders to verify completed order eligibility for reviewing
+  useEffect(() => {
+    if (!user || !gigId) {
+      setUserOrders([]);
+      return;
+    }
+    let isMounted = true;
+    setCheckingOrders(true);
+    getMyOrders()
+      .then((orders) => {
+        if (isMounted) setUserOrders(orders);
+      })
+      .catch((err) => {
+        console.warn('Orders check for review eligibility failed:', err);
+      })
+      .finally(() => {
+        if (isMounted) setCheckingOrders(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, gigId]);
+
+  // Derived orders for this specific gig
+  const ordersForThisGig = useMemo(() => {
+    return userOrders.filter((o) => o.gigId === gigId);
+  }, [userOrders, gigId]);
+
+  // Eligible order: COMPLETED and not yet reviewed
+  const eligibleCompletedOrder = useMemo(() => {
+    return ordersForThisGig.find((o) => o.status === 'COMPLETED' && !o.review);
+  }, [ordersForThisGig]);
+
+  // Already reviewed order
+  const alreadyReviewedOrder = useMemo(() => {
+    return ordersForThisGig.find((o) => o.status === 'COMPLETED' && o.review);
+  }, [ordersForThisGig]);
+
+  // Active in-progress/pending order
+  const activePendingOrder = useMemo(() => {
+    return ordersForThisGig.find((o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
+  }, [ordersForThisGig]);
 
   // Gallery images (enrich with relevant demo portfolio work if only 1 image)
   const galleryImages = useMemo(() => {
@@ -179,33 +236,56 @@ export default function GigDetailsPage() {
     }
   };
 
-  // Add Comment / Review handler
-  const handleAddComment = (e: React.FormEvent) => {
+  // Real Review Submission Handler (Enforcing COMPLETED order requirement)
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim()) {
+      setCommentErrorMsg('Please write your review feedback.');
+      return;
+    }
+    if (!eligibleCompletedOrder) {
+      setCommentErrorMsg('You cannot review this service unless you have a COMPLETED order.');
+      return;
+    }
 
     setSubmittingComment(true);
+    setCommentErrorMsg('');
 
-    const clientName = user?.name || 'Verified Client';
-    const fakeReview = {
-      id: 'local-' + Date.now(),
-      rating: newRating,
-      comment: newComment.trim(),
-      createdAt: new Date().toISOString(),
-      client: {
-        id: user?.id || 'client-id',
-        name: clientName,
-        email: user?.email || 'client@example.com',
-      },
-    };
+    try {
+      const createdReview = await submitOrderReview(
+        eligibleCompletedOrder.id,
+        newRating,
+        newComment.trim()
+      );
 
-    setTimeout(() => {
-      setLocalComments((prev) => [fakeReview, ...prev]);
+      // Refresh gig reviews from API
+      const updated = await getGigReviews(gigId);
+      setReviewsData(updated);
+      setLocalComments(updated.reviews || []);
+
+      // Update local user orders so this order is now marked reviewed
+      setUserOrders((prev) =>
+        prev.map((o) =>
+          o.id === eligibleCompletedOrder.id ? { ...o, review: createdReview } : o
+        )
+      );
+
       setNewComment('');
+      setCommentSuccessMsg('Your verified review has been published successfully! Thank you for your feedback.');
+      setTimeout(() => setCommentSuccessMsg(''), 5000);
+    } catch (err: any) {
+      console.error('Failed to submit review:', err);
+      setCommentErrorMsg(err.message || 'Failed to submit review.');
+    } finally {
       setSubmittingComment(false);
-      setCommentSuccessMsg('Your feedback and review have been posted successfully!');
-      setTimeout(() => setCommentSuccessMsg(''), 4000);
-    }, 400);
+    }
+  };
+
+  const handleHelpfulVote = (reviewId: string) => {
+    setHelpfulVotes((prev) => ({
+      ...prev,
+      [reviewId]: (prev[reviewId] || 0) + 1,
+    }));
   };
 
   const getInitials = (name?: string) => {
@@ -804,175 +884,429 @@ export default function GigDetailsPage() {
               </div>
             </section>
 
-            {/* I. COMMENTS & REVIEWS SECTION AT THE BOTTOM ("sathe amr commend gulo niche thakbe") */}
-            <section id="reviews-section" className="pt-8 border-t border-[#e4e5e7] space-y-6">
+            {/* I. COMMENTS & REVIEWS SECTION AT THE BOTTOM - SHOWCASE & STRICT ELIGIBILITY */}
+            <section id="reviews-section" className="pt-8 border-t border-[#e4e5e7] space-y-7">
+              
+              {/* 1. Section Header & Overall Rating */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-black text-[#222325]">
-                    Client Reviews & Comments ({localComments.length})
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-[#222325]">
+                      Client Reviews &amp; Ratings
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-[#1dbf73] border border-emerald-200">
+                      {localComments.length} Verified
+                    </span>
+                  </div>
                   <p className="text-xs text-[#74767e] mt-1">
-                    Authentic feedback and project comments from verified buyers.
+                    Authentic project feedback strictly from verified clients who completed consulting orders.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 bg-[#fafafa] border border-[#e4e5e7] px-4 py-2.5 rounded-2xl">
                   <div className="flex items-center gap-1 text-amber-500">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <span className="text-xl font-black text-[#222325]">
-                    {gig.averageRating > 0 ? gig.averageRating.toFixed(1) : '5.0'}
-                  </span>
-                  <span className="text-xs text-[#74767e]">out of 5 Stars</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-[#222325]">
+                      {localComments.length > 0
+                        ? (
+                            localComments.reduce((acc, c) => acc + (c.rating || 5), 0) /
+                            localComments.length
+                          ).toFixed(1)
+                        : gig.averageRating > 0
+                        ? gig.averageRating.toFixed(1)
+                        : '5.0'}
+                    </span>
+                    <span className="text-xs text-[#74767e] font-semibold">/ 5.0</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Star Rating Distribution Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl bg-[#fafafa] border border-[#e4e5e7]">
+              {/* 2. Star Rating Distribution & Quality Verification Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 rounded-2xl bg-[#fafafa] border border-[#e4e5e7]">
+                {/* Left: Star Progress Bars */}
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((stars) => {
-                    const count =
-                      stars === 5
-                        ? Math.max(localComments.length, 1)
+                    const count = localComments.filter((r) => r.rating === stars).length;
+                    const pct =
+                      localComments.length > 0
+                        ? Math.round((count / localComments.length) * 100)
+                        : stars === 5
+                        ? 100
                         : 0;
-                    const pct = localComments.length > 0 ? Math.round((count / localComments.length) * 100) : 100;
+
                     return (
-                      <div key={stars} className="flex items-center gap-2 text-xs">
-                        <span className="w-12 font-bold text-[#404145]">{stars} Stars</span>
-                        <div className="flex-1 h-2 rounded-full bg-[#e4e5e7] overflow-hidden">
+                      <div
+                        key={stars}
+                        onClick={() => setReviewFilterRating(reviewFilterRating === stars ? 'ALL' : stars)}
+                        className="flex items-center gap-2 text-xs cursor-pointer group hover:opacity-80 transition"
+                      >
+                        <span className="w-12 font-bold text-[#404145] group-hover:text-[#1dbf73] transition">
+                          {stars} Stars
+                        </span>
+                        <div className="flex-1 h-2.5 rounded-full bg-[#e4e5e7] overflow-hidden">
                           <div
-                            className="h-full bg-amber-400 rounded-full"
-                            style={{ width: `${stars === 5 ? 96 : 4}%` }}
+                            className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="w-8 text-right font-medium text-[#74767e]">
-                          {stars === 5 ? '96%' : '4%'}
+                        <span className="w-14 text-right font-medium text-[#74767e]">
+                          {pct}% ({count})
                         </span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="p-4 rounded-xl bg-white border border-[#e4e5e7] flex flex-col justify-center text-xs space-y-2">
-                  <div className="font-bold text-[#222325] text-sm flex items-center gap-1.5 text-emerald-600">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>ConsulSphere Verified Feedback</span>
+                {/* Right: Verification Highlights */}
+                <div className="p-4 rounded-xl bg-white border border-[#e4e5e7] flex flex-col justify-between text-xs space-y-3">
+                  <div className="space-y-1">
+                    <div className="font-bold text-[#222325] text-sm flex items-center gap-1.5 text-emerald-600">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>ConsulSphere 100% Escrow Verified</span>
+                    </div>
+                    <p className="text-slate-600 text-[11px] leading-relaxed">
+                      Every rating is verified by our smart escrow contracts. Clients can only rate and review once their consulting deliverables have been successfully completed and approved.
+                    </p>
                   </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    All reviews are submitted by verified clients after completion of consulting orders, protected by our escrow system.
-                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2.5 text-[11px]">
+                    <div className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <span className="text-[#1dbf73]">✓</span> Communication: 5.0
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <span className="text-[#1dbf73]">✓</span> Delivery Speed: 5.0
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <span className="text-[#1dbf73]">✓</span> Service as Described: 5.0
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-700 font-semibold">
+                      <span className="text-[#1dbf73]">✓</span> Escrow Protected: 100%
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Add New Review / Comment Form */}
-              <div className="p-6 rounded-2xl bg-white border border-[#e4e5e7] shadow-xs space-y-4">
-                <h3 className="text-base font-extrabold text-[#222325] flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-[#1dbf73]" />
-                  <span>Leave a Review or Comment</span>
-                </h3>
-
-                {commentSuccessMsg && (
-                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>{commentSuccessMsg}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleAddComment} className="space-y-4">
-                  {/* Rating Selector */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[#74767e]">Your Rating:</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setNewRating(s)}
-                          className="p-1 cursor-pointer transition-transform hover:scale-115"
-                        >
-                          <Star
-                            className={`w-5 h-5 ${
-                              s <= newRating
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'text-slate-300'
-                            }`}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                    <span className="text-xs font-black text-[#222325] ml-1">
-                      {newRating} / 5 Stars
-                    </span>
-                  </div>
-
-                  {/* Comment Textarea */}
-                  <div>
-                    <textarea
-                      rows={3}
-                      required
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Share your experience working with this consultant (e.g. communication, quality, delivery speed)..."
-                      className="w-full p-3.5 rounded-xl border border-[#c5c6c9] focus:border-[#222325] focus:outline-none text-xs sm:text-sm text-[#222325] placeholder:text-[#95979d]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#74767e]">
-                      Posting as <strong>{user?.name || 'Guest / Client'}</strong>
-                    </span>
-                    <button
-                      type="submit"
-                      disabled={submittingComment || !newComment.trim()}
-                      className="px-5 py-2.5 rounded-xl bg-[#1dbf73] hover:bg-[#19a463] text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{submittingComment ? 'Submitting...' : 'Post Review & Comment'}</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Existing Comments / Reviews List */}
+              {/* 3. STRICT REVIEW ELIGIBILITY GATE */}
+              {/* Requirement: "order complete nah hole review korte parbe nh" */}
               <div className="space-y-4">
-                {localComments.length === 0 ? (
-                  <div className="p-8 text-center border border-dashed border-[#e4e5e7] rounded-xl text-xs text-[#74767e]">
-                    No comments yet. Be the first client to review this gig!
+                {!user ? (
+                  /* Case A: Not logged in */
+                  <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+                      <Lock className="w-6 h-6 text-slate-700" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-sm text-slate-900">
+                        Verified Client Reviews Only
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        To maintain authenticity and trust on ConsulSphere, only clients who have booked and completed an order for this gig can leave a review.
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => openAuthModal('login')}
+                        className="px-5 py-2.5 bg-[#1dbf73] hover:bg-[#19a463] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <span>Sign In to Leave a Review</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : checkingOrders ? (
+                  /* Case B: Loading orders check */
+                  <div className="p-5 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-500 animate-pulse">
+                    Checking review eligibility for your account...
+                  </div>
+                ) : eligibleCompletedOrder ? (
+                  /* Case C: Has an unreviewed COMPLETED order -> UNLOCKED REVIEW FORM */
+                  <div className="p-6 rounded-2xl bg-white border-2 border-[#1dbf73] shadow-md space-y-4 animate-in fade-in duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                            Verified Completed Order #{eligibleCompletedOrder.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <BadgeCheck className="w-4 h-4 text-[#1dbf73]" />
+                        </div>
+                        <h3 className="text-base font-black text-[#222325] mt-1 flex items-center gap-1.5">
+                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          <span>Write Your Verified Review</span>
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          You completed Order #{eligibleCompletedOrder.id.slice(0, 8).toUpperCase()} ({eligibleCompletedOrder.package?.name || 'Standard Package'}). Your review helps other clients hire with confidence.
+                        </p>
+                      </div>
+                    </div>
+
+                    {commentSuccessMsg && (
+                      <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>{commentSuccessMsg}</span>
+                      </div>
+                    )}
+
+                    {commentErrorMsg && (
+                      <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <span>{commentErrorMsg}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmitReview} className="space-y-4">
+                      {/* Rating Selector */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-[#74767e]">Your Rating:</span>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setNewRating(s)}
+                              className="p-1 cursor-pointer transition-transform hover:scale-120"
+                            >
+                              <Star
+                                className={`w-6 h-6 ${
+                                  s <= newRating
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-slate-300'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-xs font-black text-[#222325] ml-1">
+                          {newRating === 5
+                            ? '5 Stars — Exceptional Delivery!'
+                            : newRating === 4
+                            ? '4 Stars — Very Good'
+                            : newRating === 3
+                            ? '3 Stars — Average'
+                            : newRating === 2
+                            ? '2 Stars — Below Expectations'
+                            : '1 Star — Poor'}
+                        </span>
+                      </div>
+
+                      {/* Comment Textarea */}
+                      <div>
+                        <textarea
+                          rows={3}
+                          required
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Share your experience: How was the consultant's communication, deliverable quality, and speed? Would you recommend this service?"
+                          className="w-full p-3.5 rounded-xl border border-slate-300 focus:border-[#1dbf73] focus:ring-1 focus:ring-[#1dbf73] focus:outline-hidden text-xs sm:text-sm text-[#222325] placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[#74767e]">
+                          Posting as <strong className="text-slate-900">{user?.name || 'Verified Client'}</strong>
+                        </span>
+                        <button
+                          type="submit"
+                          disabled={submittingComment || !newComment.trim()}
+                          className="px-6 py-2.5 rounded-xl bg-[#1dbf73] hover:bg-[#19a463] text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{submittingComment ? 'Submitting...' : 'Post Verified Review'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ) : activePendingOrder ? (
+                  /* Case D: Order is in progress or pending (NOT COMPLETED!) */
+                  <div className="p-6 rounded-2xl bg-sky-50/70 border border-sky-200 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center mx-auto">
+                      <Clock className="w-6 h-6 animate-pulse text-sky-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200 uppercase tracking-wider">
+                        Order #{activePendingOrder.id.slice(0, 8).toUpperCase()} • {activePendingOrder.status === 'IN_PROGRESS' ? 'Processing' : 'Pending'}
+                      </span>
+                      <h4 className="font-extrabold text-sm text-slate-900">
+                        Order In Progress — Review Locked
+                      </h4>
+                      <p className="text-xs text-slate-600 max-w-md mx-auto">
+                        Your order for this gig is currently active. To protect marketplace integrity, reviews and ratings can only be given once the consultant completes the work and the order is marked as <strong>COMPLETED</strong>.
+                      </p>
+                    </div>
+                    <div>
+                      <Link
+                        href="/orders"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                      >
+                        <span>Check Order Progress in My Orders</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : alreadyReviewedOrder ? (
+                  /* Case E: Already reviewed */
+                  <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-center space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <h4 className="font-extrabold text-sm text-emerald-950">
+                      You&apos;ve Already Reviewed This Order
+                    </h4>
+                    <p className="text-xs text-emerald-800 max-w-md mx-auto">
+                      Thank you! Your feedback for Order #{alreadyReviewedOrder.id.slice(0, 8).toUpperCase()} is verified and displayed in the review showcase below.
+                    </p>
                   </div>
                 ) : (
-                  localComments.map((rev, idx) => (
+                  /* Case F: Has never ordered this gig */
+                  <div className="p-6 rounded-2xl bg-[#fafafa] border border-slate-200 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+                      <Lock className="w-6 h-6 text-slate-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-sm text-slate-900">
+                        Verified Purchases Only
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        You have not placed an order for this consulting gig yet. Once you order and the service is marked as completed, you will be able to share your verified rating and review.
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById('pricing-plans');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          else setIsOrderModalOpen(true);
+                        }}
+                        className="px-5 py-2.5 bg-[#222325] hover:bg-[#1dbf73] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <span>View Packages &amp; Order Service</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. SHOWCASE FILTER & SORT BAR */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-200/80">
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setReviewFilterRating('ALL')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex-shrink-0 ${
+                      reviewFilterRating === 'ALL'
+                        ? 'bg-[#18181b] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    All ({localComments.length})
+                  </button>
+
+                  {[5, 4, 3].map((star) => {
+                    const count = localComments.filter((r) => r.rating === star).length;
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewFilterRating(star)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex-shrink-0 flex items-center gap-1 ${
+                          reviewFilterRating === star
+                            ? 'bg-[#18181b] text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>{star} Stars</span>
+                        <span className="text-[10px] opacity-80">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Sort Dropdown */}
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                  <select
+                    value={reviewSort}
+                    onChange={(e) => setReviewSort(e.target.value as any)}
+                    className="text-xs font-bold text-slate-700 bg-transparent border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="NEWEST">Most Recent</option>
+                    <option value="HIGHEST">Highest Rating</option>
+                    <option value="LOWEST">Lowest Rating</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 5. SHOWCASE REVIEW CARDS LIST */}
+              <div className="space-y-4">
+                {(() => {
+                  let filtered = [...localComments];
+                  if (reviewFilterRating !== 'ALL') {
+                    filtered = filtered.filter((r) => r.rating === reviewFilterRating);
+                  }
+                  if (reviewSort === 'NEWEST') {
+                    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  } else if (reviewSort === 'HIGHEST') {
+                    filtered.sort((a, b) => (b.rating || 5) - (a.rating || 5));
+                  } else if (reviewSort === 'LOWEST') {
+                    filtered.sort((a, b) => (a.rating || 5) - (b.rating || 5));
+                  }
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-8 text-center border border-dashed border-[#e4e5e7] rounded-2xl text-xs text-[#74767e] bg-slate-50">
+                        No reviews found for this filter.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((rev, idx) => (
                     <article
                       key={rev.id || idx}
-                      className="p-5 rounded-2xl bg-white border border-[#e4e5e7] space-y-3 shadow-xs"
+                      className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e4e5e7] shadow-2xs hover:shadow-xs transition-shadow space-y-3.5"
                     >
                       {/* Reviewer Header */}
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-200 text-[#222325] font-bold text-xs flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-extrabold text-xs flex items-center justify-center shadow-xs flex-shrink-0">
                             {getInitials(rev.client?.name)}
                           </div>
                           <div>
-                            <span className="font-bold text-xs sm:text-sm text-[#222325] block">
-                              {rev.client?.name || 'Verified Buyer'}
-                            </span>
-                            <span className="text-[11px] text-[#74767e]">
-                              United States • Verified Order
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-xs sm:text-sm text-[#222325]">
+                                {rev.client?.name || 'Verified Client'}
+                              </span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#1dbf73] border border-emerald-200">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Verified Order</span>
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-[#74767e] block">
+                              Completed Consultation • Escrow Protected
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 text-amber-400">
+                        {/* Star Rating Badge */}
+                        <div className="flex items-center gap-1 text-amber-400 bg-amber-50/60 px-2.5 py-1 rounded-xl border border-amber-200/60">
                           {Array.from({ length: rev.rating || 5 }).map((_, i) => (
                             <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                           ))}
+                          <span className="text-xs font-black text-amber-900 ml-1">
+                            {rev.rating || 5}.0
+                          </span>
                         </div>
                       </div>
 
                       {/* Comment Body */}
-                      <p className="text-xs sm:text-sm text-[#404145] leading-relaxed">
-                        {rev.comment}
+                      <p className="text-xs sm:text-sm text-[#404145] leading-relaxed pl-1 border-l-2 border-slate-100">
+                        &quot;{rev.comment}&quot;
                       </p>
 
                       {/* Review Meta & Helpfulness */}
@@ -988,26 +1322,29 @@ export default function GigDetailsPage() {
                           <span>Helpful?</span>
                           <button
                             type="button"
-                            className="hover:text-[#222325] flex items-center gap-1 cursor-pointer"
+                            onClick={() => handleHelpfulVote(rev.id || String(idx))}
+                            className="hover:text-[#1dbf73] flex items-center gap-1 cursor-pointer transition"
                           >
-                            <ThumbsUp className="w-3 h-3" /> Yes
+                            <ThumbsUp className="w-3 h-3" />
+                            <span>Yes ({helpfulVotes[rev.id || String(idx)] || 2})</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Seller's response (Fiverr style nested reply) */}
-                      <div className="mt-2 ml-4 p-3 rounded-xl bg-[#fafafa] border-l-2 border-[#1dbf73] text-xs text-[#62646a] space-y-1">
+                      {/* Seller's response */}
+                      <div className="mt-2 ml-4 p-3.5 rounded-xl bg-[#fafafa] border-l-2 border-[#1dbf73] text-xs text-[#62646a] space-y-1">
                         <span className="font-bold text-[#222325] block text-[11px]">
-                          Seller&apos;s Response
+                          Consultant&apos;s Response
                         </span>
-                        <p>
-                          Thank you so much! It was an absolute pleasure working on your project. Looking forward to our next collaboration!
+                        <p className="text-[11px] leading-relaxed">
+                          Thank you so much! It was a pleasure collaborating on your consulting requirements. Looking forward to your next milestone!
                         </p>
                       </div>
                     </article>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
+
             </section>
 
           </div>

@@ -184,6 +184,86 @@ export async function getGigCategories(): Promise<IGigCategory[]> {
   }
 }
 
+export interface ISearchSuggestionItem {
+  text: string;
+  category: string;
+  type?: 'popular' | 'category' | 'service' | 'tag';
+  id?: string;
+}
+
+export interface ISearchSuggestionsData {
+  popularSearches?: string[];
+  popularCategories?: string[];
+  featuredGigs?: ISearchSuggestionItem[];
+}
+
+export interface IHeroDataResponse {
+  popularTags: Array<{ label: string; query: string }>;
+  categories: IGigCategory[];
+  stats: {
+    totalTalent: number;
+    totalGigs: number;
+    completedOrders: number;
+  };
+}
+
+export async function getSearchSuggestions(query?: string): Promise<any> {
+  try {
+    const qParam = query && query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+    const res = await fetch(`${API_BASE_URL}/gigs/suggestions${qParam}`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return data.data;
+    }
+    return query && query.trim() ? [] : { popularSearches: [], popularCategories: [], featuredGigs: [] };
+  } catch (err) {
+    console.error('Failed to fetch search suggestions:', err);
+    return query && query.trim() ? [] : { popularSearches: [], popularCategories: [], featuredGigs: [] };
+  }
+}
+
+export async function getHeroData(): Promise<IHeroDataResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/gigs/hero-data`, {
+      next: { revalidate: 60 },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return data.data;
+    }
+    throw new Error('Hero data failed');
+  } catch (err) {
+    console.error('Failed to fetch hero data:', err);
+    return {
+      popularTags: [
+        { label: 'Next.js & React', query: 'Next.js' },
+        { label: 'Website Design', query: 'Website Design' },
+        { label: 'Logo & Branding', query: 'Logo Design' },
+        { label: 'AI Services', query: 'AI' },
+        { label: 'SEO & Marketing', query: 'Digital Marketing' },
+        { label: 'Business Strategy', query: 'Business Strategy' },
+      ],
+      categories: [
+        { name: 'Web Development', count: 1 },
+        { name: 'Graphics & Design', count: 1 },
+        { name: 'Digital Marketing', count: 1 },
+        { name: 'Video & Animation', count: 1 },
+        { name: 'Writing & Translation', count: 1 },
+        { name: 'Business & Consulting', count: 1 },
+        { name: 'AI Services', count: 1 },
+      ],
+      stats: {
+        totalTalent: 12,
+        totalGigs: 8,
+        completedOrders: 158,
+      },
+    };
+  }
+}
+
+
 export interface IGigPackage {
   id: string;
   gigId: string;
@@ -383,6 +463,189 @@ export async function createOrder(gigId: string, packageId: string, requirements
 
   return data.data;
 }
+
+export interface ICancellationReason {
+  code: string;
+  label: string;
+  description: string;
+}
+
+export interface IOrderGig {
+  id: string;
+  title: string;
+  category: string;
+  images: string[];
+  provider?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface IOrderPackage {
+  id: string;
+  tier: 'BASIC' | 'STANDARD' | 'PREMIUM';
+  name: string;
+  description: string;
+  price: number;
+  deliveryTimeInDays: number;
+  revisions: number;
+  features: string[];
+}
+
+export interface IOrderPayment {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'UNPAID' | 'PAID' | 'REFUNDED' | 'FAILED';
+  paymentGateway: string;
+  transactionId?: string | null;
+}
+
+export interface IOrderReview {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt?: string;
+}
+
+export interface IOrder {
+  id: string;
+  clientId: string;
+  gigId: string;
+  packageId: string;
+  price: number;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus: 'UNPAID' | 'PAID' | 'REFUNDED' | 'FAILED';
+  requirements?: string | null;
+  cancellationReason?: string | null;
+  cancellationNote?: string | null;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  gig: IOrderGig;
+  package: IOrderPackage;
+  client?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  payment?: IOrderPayment | null;
+  review?: IOrderReview | null;
+}
+
+export async function getMyOrders(): Promise<IOrder[]> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to view your orders.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders/my-orders`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch orders.');
+  }
+
+  return data.data || [];
+}
+
+export async function getSingleOrder(orderId: string): Promise<IOrder> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to view order details.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch order details.');
+  }
+
+  return data.data;
+}
+
+export async function getCancellationReasons(): Promise<ICancellationReason[]> {
+  const res = await fetch(`${API_BASE_URL}/orders/cancellation-reasons`, {
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch cancellation reasons.');
+  }
+
+  return data.data || [];
+}
+
+export async function cancelOrder(
+  orderId: string,
+  payload: {
+    cancellationReason: string;
+    cancellationNote?: string;
+  }
+): Promise<IOrder> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to cancel this order.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to cancel order.');
+  }
+
+  return data.data;
+}
+
+export async function submitOrderReview(
+  orderId: string,
+  rating: number,
+  comment: string
+): Promise<any> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to submit a review.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/review`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ rating, comment }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to submit review.');
+  }
+
+  return data.data;
+}
+
 
 export interface IGetUsersParams {
   searchTerm?: string;
