@@ -19,23 +19,11 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 
-const DEFAULT_CATEGORIES: IGigCategory[] = [
-  { name: 'Web Development', count: 1 },
-  { name: 'Graphics & Design', count: 1 },
-  { name: 'Digital Marketing', count: 1 },
-  { name: 'Video & Animation', count: 1 },
-  { name: 'Writing & Translation', count: 1 },
-  { name: 'Business & Consulting', count: 1 },
-  { name: 'AI Services', count: 1 },
-  { name: 'Programming & Tech', count: 0 },
-  { name: 'Finance & Accounting', count: 0 },
-];
-
 export default function Navbar() {
   const { user, logout, openAuthModal } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [categories, setCategories] = useState<IGigCategory[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<IGigCategory[]>([]);
   const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(true);
 
   useEffect(() => {
@@ -43,7 +31,7 @@ export default function Navbar() {
     async function loadDynamicCategories() {
       try {
         const fetched = await getGigCategories();
-        if (isMounted && fetched.length > 0) {
+        if (isMounted && Array.isArray(fetched)) {
           setCategories(fetched);
         }
       } catch (err) {
@@ -51,8 +39,15 @@ export default function Navbar() {
       }
     }
     loadDynamicCategories();
+
+    const handleFocus = () => {
+      loadDynamicCategories();
+    };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

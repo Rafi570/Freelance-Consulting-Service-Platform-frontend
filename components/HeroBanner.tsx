@@ -42,19 +42,11 @@ export default function HeroBanner() {
       { label: 'Digital Marketing', query: 'Digital Marketing' },
       { label: 'Business Strategy', query: 'Business Strategy' },
     ],
-    categories: [
-      { name: 'Web Development', count: 1 },
-      { name: 'Graphics & Design', count: 1 },
-      { name: 'Digital Marketing', count: 1 },
-      { name: 'Video & Animation', count: 1 },
-      { name: 'Writing & Translation', count: 1 },
-      { name: 'Business & Consulting', count: 1 },
-      { name: 'AI Services', count: 1 },
-    ],
+    categories: [],
     stats: {
-      totalTalent: 12,
-      totalGigs: 8,
-      completedOrders: 158,
+      totalTalent: 0,
+      totalGigs: 0,
+      completedOrders: 0,
     },
   });
 
@@ -63,22 +55,32 @@ export default function HeroBanner() {
   // Fetch dynamic Hero data from backend API
   useEffect(() => {
     let isMounted = true;
-    getHeroData()
-      .then((data) => {
-        if (!isMounted) return;
-        if (data) {
-          setHeroData(data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load dynamic hero data:', err);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingHero(false);
-      });
+    const fetchHero = () => {
+      getHeroData()
+        .then((data) => {
+          if (!isMounted) return;
+          if (data) {
+            setHeroData(data);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load dynamic hero data:', err);
+        })
+        .finally(() => {
+          if (isMounted) setLoadingHero(false);
+        });
+    };
+
+    fetchHero();
+
+    const handleFocus = () => {
+      fetchHero();
+    };
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       isMounted = false;
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

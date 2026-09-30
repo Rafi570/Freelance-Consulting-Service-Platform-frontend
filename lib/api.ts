@@ -157,30 +157,23 @@ export interface IGigCategory {
   count?: number;
 }
 
-let categoriesCache: { data: IGigCategory[]; timestamp: number } | null = null;
-
 export async function getGigCategories(): Promise<IGigCategory[]> {
-  if (categoriesCache && Date.now() - categoriesCache.timestamp < 300 * 1000) {
-    return categoriesCache.data;
-  }
   try {
     const res = await fetch(`${API_BASE_URL}/gigs/categories`, {
-      next: { revalidate: 60 },
+      cache: 'no-store',
     });
     const data = await res.json();
     if (res.ok && data.success && Array.isArray(data.data)) {
-      const parsed = data.data.map((item: any) =>
+      return data.data.map((item: any) =>
         typeof item === 'string'
           ? { name: item, count: 0 }
           : { name: item.name || String(item), count: item.count ?? 0 }
       );
-      categoriesCache = { data: parsed, timestamp: Date.now() };
-      return parsed;
     }
-    return categoriesCache ? categoriesCache.data : [];
+    return [];
   } catch (err) {
     console.error('Failed to fetch gig categories:', err);
-    return categoriesCache ? categoriesCache.data : [];
+    return [];
   }
 }
 
@@ -227,7 +220,7 @@ export async function getSearchSuggestions(query?: string): Promise<any> {
 export async function getHeroData(): Promise<IHeroDataResponse> {
   try {
     const res = await fetch(`${API_BASE_URL}/gigs/hero-data`, {
-      next: { revalidate: 60 },
+      cache: 'no-store',
     });
     const data = await res.json();
     if (res.ok && data.success) {
@@ -246,18 +239,18 @@ export async function getHeroData(): Promise<IHeroDataResponse> {
         { label: 'Business Strategy', query: 'Business Strategy' },
       ],
       categories: [
-        { name: 'Web Development', count: 1 },
-        { name: 'Graphics & Design', count: 1 },
-        { name: 'Digital Marketing', count: 1 },
-        { name: 'Video & Animation', count: 1 },
-        { name: 'Writing & Translation', count: 1 },
-        { name: 'Business & Consulting', count: 1 },
-        { name: 'AI Services', count: 1 },
+        { name: 'Web Development', count: 0 },
+        { name: 'Graphics & Design', count: 0 },
+        { name: 'Digital Marketing', count: 0 },
+        { name: 'Video & Animation', count: 0 },
+        { name: 'Writing & Translation', count: 0 },
+        { name: 'Business & Consulting', count: 0 },
+        { name: 'AI Services', count: 0 },
       ],
       stats: {
-        totalTalent: 12,
-        totalGigs: 8,
-        completedOrders: 158,
+        totalTalent: 0,
+        totalGigs: 0,
+        completedOrders: 0,
       },
     };
   }
@@ -840,5 +833,282 @@ export async function updateMyProviderProfile(payload: {
 
   return data.data;
 }
+
+export interface IGigFilter {
+  id: string;
+  name: string;
+  label?: string | null;
+  type: 'CATEGORY' | 'TAG' | 'FEATURED';
+  description?: string | null;
+  icon?: string | null;
+  isActive: boolean;
+  gigCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getGigFilters(params?: {
+  type?: string;
+  isActive?: boolean;
+  searchTerm?: string;
+}): Promise<IGigFilter[]> {
+  try {
+    const q = new URLSearchParams();
+    if (params?.type) q.append('type', params.type);
+    if (params?.isActive !== undefined) q.append('isActive', String(params.isActive));
+    if (params?.searchTerm) q.append('searchTerm', params.searchTerm);
+
+    const queryStr = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE_URL}/gig-filters${queryStr}`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    if (res.ok && data.success && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  } catch (err) {
+    console.error('Failed to fetch gig filters:', err);
+    return [];
+  }
+}
+
+export async function createGigFilter(payload: {
+  name: string;
+  label?: string;
+  type?: 'CATEGORY' | 'TAG' | 'FEATURED';
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+}): Promise<IGigFilter> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/gig-filters`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create gig filter');
+  }
+
+  return data.data;
+}
+
+export async function updateGigFilter(
+  id: string,
+  payload: Partial<IGigFilter>
+): Promise<IGigFilter> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/gig-filters/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to update gig filter');
+  }
+
+  return data.data;
+}
+
+export async function deleteGigFilter(id: string): Promise<void> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in as Super Admin.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/gig-filters/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to delete gig filter');
+  }
+}
+
+export interface IPackageInput {
+  tier: 'BASIC' | 'STANDARD' | 'PREMIUM';
+  name: string;
+  description: string;
+  price: number;
+  deliveryTimeInDays: number;
+  revisions?: number;
+  features?: string[];
+}
+
+export interface ICreateGigPayload {
+  title: string;
+  description: string;
+  category: string;
+  tags?: string[];
+  images?: string[];
+  packages: IPackageInput[];
+}
+
+export interface IMyGigsResponse {
+  isSubscribed: boolean;
+  gigLimit: number | string;
+  totalCreated: number;
+  remainingFreeGigs: number | string;
+  gigs: IGig[];
+}
+
+export async function getMyGigs(): Promise<IMyGigsResponse> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to access your gigs.');
+
+  const res = await fetch(`${API_BASE_URL}/gigs/my-gigs`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to load your gigs');
+  }
+
+  return data.data;
+}
+
+export async function createGig(payload: ICreateGigPayload): Promise<IGig> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to create a gig.');
+
+  const res = await fetch(`${API_BASE_URL}/gigs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create gig');
+  }
+
+  clientGigsCache.clear();
+  return data.data;
+}
+
+export async function updateGig(
+  id: string,
+  payload: Partial<ICreateGigPayload> & { status?: 'ACTIVE' | 'PAUSED' | 'DRAFT' }
+): Promise<IGig> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to update gig.');
+
+  const res = await fetch(`${API_BASE_URL}/gigs/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to update gig');
+  }
+
+  clientGigsCache.clear();
+  return data.data;
+}
+
+export async function toggleGigStatus(
+  id: string,
+  status?: 'ACTIVE' | 'PAUSED' | 'DRAFT'
+): Promise<IGig> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to toggle gig status.');
+
+  const res = await fetch(`${API_BASE_URL}/gigs/${id}/toggle-status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to toggle gig status');
+  }
+
+  clientGigsCache.clear();
+  return data.data;
+}
+
+export async function deleteGig(id: string): Promise<void> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to delete gig.');
+
+  const res = await fetch(`${API_BASE_URL}/gigs/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to delete gig');
+  }
+
+  clientGigsCache.clear();
+}
+
+export async function uploadGigImages(files: File[]): Promise<string[]> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to upload images.');
+
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('images', file);
+  });
+
+  const res = await fetch(`${API_BASE_URL}/gigs/upload-images`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to upload images');
+  }
+
+  return data.data?.images || [];
+}
+
 
 

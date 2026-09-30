@@ -11,7 +11,9 @@ import {
   LogIn,
   LogOut,
   Users,
-  ShoppingBag
+  ShoppingBag,
+  SlidersHorizontal,
+  Briefcase
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,12 +39,15 @@ export default function DashboardSidebar({
       return [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { label: 'Users & Roles', href: '/dashboard/users', icon: Users },
+        { label: 'Manage Gigs', href: '/dashboard/gigs', icon: Briefcase },
+        { label: 'Gig Filters', href: '/dashboard/filters', icon: SlidersHorizontal },
       ];
     }
 
     // Default: PROVIDER
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Gigs', href: '/dashboard/gigs', icon: Briefcase },
       { label: 'Explore Gigs', href: '/gigs', icon: Table },
     ];
   };

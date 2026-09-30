@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import StatCard from '@/components/dashboard/StatCard';
 import ChartsSection from '@/components/dashboard/ChartsSection';
 import ProjectsTable from '@/components/dashboard/ProjectsTable';
@@ -15,7 +16,8 @@ import {
   CheckCircle2,
   TrendingUp,
   Bookmark,
-  Landmark
+  Landmark,
+  ChevronRight
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -153,6 +155,36 @@ export default function DashboardPage({ role = 'PROVIDER' }: DashboardPageProps)
             icon={stat.icon}
           />
         ))}
+      </div>
+
+      {/* Quick Action: Gigs Management Banner */}
+      <div className="rounded-2xl p-4 sm:p-5 bg-linear-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border border-slate-800">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+            <Briefcase className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+              <span>{role === 'SUPER_ADMIN' ? 'Manage Platform Gigs' : 'Launch a New Consulting Gig'}</span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                Webdevelopment Ready
+              </span>
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              {role === 'SUPER_ADMIN'
+                ? 'Review active categories, moderate provider listings, and configure Basic, Standard, and Premium packages.'
+                : 'Offer professional web development services with tiered pricing (Basic, Standard & Premium) to attract clients.'}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/dashboard/gigs"
+          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-center"
+        >
+          <span>{role === 'SUPER_ADMIN' ? 'Manage Gigs' : '+ Create & View Gigs'}</span>
+          <ChevronRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {/* 2. Middle Row: 3 Chart Cards (Website Views, Daily Sales, Completed Tasks) */}
