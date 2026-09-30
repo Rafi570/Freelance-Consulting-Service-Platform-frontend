@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Briefcase,
   Plus,
@@ -29,13 +28,13 @@ import {
   ShoppingBag,
   Star,
   Upload,
-  ImageIcon,
-  Info,
-  ShieldCheck,
   Crown,
-  Zap,
+  Calendar,
+  User,
+  ShieldCheck,
   ArrowRight,
-  Copy
+  SlidersHorizontal,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -51,7 +50,6 @@ import {
   toggleGigStatus,
   deleteGig,
   getGigFilters,
-  getGigCategories,
   uploadGigImages,
   IGigFilter
 } from '@/lib/api';
@@ -182,6 +180,10 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // VIEW DETAILS MODAL STATE (User requested)
+  const [viewingGig, setViewingGig] = useState<IGig | null>(null);
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState<number>(0);
+
   // Create Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
@@ -218,7 +220,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
   // Status Toggling State
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  // Load Categories (EXCLUSIVELY from active categories created by Super Admin)
+  // Load Categories (Strictly from active categories created by Super Admin)
   const loadCategories = useCallback(async () => {
     try {
       const filtersData = await getGigFilters({ type: 'CATEGORY', isActive: true });
@@ -242,17 +244,18 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     }
   }, []);
 
-  // Load Gigs
+  // Load Gigs (No cache, instantaneous fetching)
   const loadGigs = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
       if (isSuperAdmin) {
-        // Super Admin gets all gigs
+        // Super Admin gets all platform gigs with fresh cache-busted fetch
         const res = await getGigs({
           category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
           searchTerm: searchTerm.trim() || undefined,
           limit: 100,
+          noCache: true,
         });
         const gigsList = Array.isArray(res?.data) ? res.data : [];
         setGigs(gigsList);
@@ -263,7 +266,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
           remainingFreeGigs: 'Unlimited',
         });
       } else {
-        // Provider gets their own gigs with quota info
+        // Provider gets their own gigs directly from DB
         const data = await getMyGigs();
         setQuotaInfo({
           isSubscribed: data.isSubscribed,
@@ -315,17 +318,34 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     }
   }, [successMessage]);
 
+  // Filtered view list for the table
+  const displayedGigs = useMemo(() => {
+    let result = [...gigs];
+    if (selectedCategory !== 'ALL') {
+      result = result.filter(
+        (g) => g.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+    if (selectedStatus !== 'ALL') {
+      result = result.filter((g) => g.status === selectedStatus);
+    }
+    if (searchTerm.trim()) {
+      const s = searchTerm.toLowerCase();
+      result = result.filter(
+        (g) =>
+          g.title.toLowerCase().includes(s) ||
+          g.description.toLowerCase().includes(s) ||
+          g.tags?.some((t) => t.toLowerCase().includes(s)) ||
+          g.provider?.name?.toLowerCase().includes(s) ||
+          g.provider?.email?.toLowerCase().includes(s)
+      );
+    }
+    return result;
+  }, [gigs, selectedCategory, selectedStatus, searchTerm]);
+
   // Stats calculation
   const totalGigsCount = gigs.length;
   const activeGigsCount = useMemo(() => gigs.filter((g) => g.status === 'ACTIVE').length, [gigs]);
-  const pausedGigsCount = useMemo(() => gigs.filter((g) => g.status === 'PAUSED').length, [gigs]);
-  const webDevGigsCount = useMemo(
-    () =>
-      gigs.filter((g) =>
-        g.category.toLowerCase().includes('web')
-      ).length,
-    [gigs]
-  );
 
   // Template auto-fill helper
   const handleApplyWebDevTemplate = () => {
@@ -418,7 +438,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     }));
   };
 
-  // Add / Remove feature bullet in package
   const handleAddFeatureToPackage = (tier: 'BASIC' | 'STANDARD' | 'PREMIUM', featureText: string) => {
     if (!featureText.trim()) return;
     setFormData((prev) => ({
@@ -453,12 +472,12 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     }));
   };
 
-  // Submit Create Gig
+  // SUBMIT CREATE GIG: 0ms INSTANT LOCAL STATE UPDATE (FIXES "REFRESH NA DILE DEKHAI NEH")
   const handleCreateGigSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Basic Validation
+    // Validation
     if (!formData.title || formData.title.length < 5) {
       setErrorMessage('Gig title must be at least 5 characters.');
       setCreateStep(1);
@@ -470,18 +489,16 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
       return;
     }
     if (!formData.category) {
-      setErrorMessage('Please select a valid category (e.g. Webdevelopment).');
+      setErrorMessage('Please select a valid category created by Super Admin.');
       setCreateStep(1);
       return;
     }
 
-    // Ensure images has at least one valid image
     const finalImages =
       formData.images && formData.images.length > 0
         ? formData.images
         : [DEFAULT_WEB_DEV_IMAGE];
 
-    // Ensure 3 packages are present and properly formatted
     const requiredTiers = ['BASIC', 'STANDARD', 'PREMIUM'] as const;
     const finalPackages = requiredTiers.map((t) => {
       const existing = formData.packages.find((p) => p.tier === t);
@@ -499,7 +516,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
 
     setIsSubmittingCreate(true);
     try {
-      await createGig({
+      const newGig = await createGig({
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category.trim(),
@@ -508,10 +525,23 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
         packages: finalPackages,
       });
 
-      setSuccessMessage(`Gig "${formData.title}" published successfully with Basic, Standard & Premium packages!`);
+      // 1. INSTANT STATE INJECTION: Place new gig at top of state list immediately!
+      setGigs((prev) => [newGig, ...prev.filter((g) => g.id !== newGig.id)]);
+
+      // 2. Update quota stats immediately
+      setQuotaInfo((prev) => ({
+        ...prev,
+        totalCreated: prev.totalCreated + 1,
+        remainingFreeGigs:
+          typeof prev.remainingFreeGigs === 'number'
+            ? Math.max(0, prev.remainingFreeGigs - 1)
+            : prev.remainingFreeGigs,
+      }));
+
+      // 3. Reset form and close modal
+      setSuccessMessage(`Gig "${formData.title}" published successfully!`);
       setIsCreateModalOpen(false);
       setCreateStep(1);
-      // Reset form
       setFormData({
         title: '',
         description: '',
@@ -520,7 +550,9 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
         images: [DEFAULT_WEB_DEV_IMAGE],
         packages: EMPTY_PACKAGES,
       });
-      loadGigs();
+
+      // 4. Background re-sync to ensure perfect database alignment
+      await loadGigs();
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to create gig. Please check your inputs.');
     } finally {
@@ -529,16 +561,23 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
   };
 
   // Toggle Gig Status
-  const handleToggleStatus = async (gig: IGig) => {
+  const handleToggleStatus = async (gig: IGig, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setTogglingId(gig.id);
     setErrorMessage(null);
     try {
       const nextStatus = gig.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
       await toggleGigStatus(gig.id, nextStatus);
-      setSuccessMessage(`Gig "${gig.title}" is now ${nextStatus === 'ACTIVE' ? 'Live & Active' : 'Paused'}.`);
+
+      // Instant state update
       setGigs((prev) =>
         prev.map((g) => (g.id === gig.id ? { ...g, status: nextStatus } : g))
       );
+      if (viewingGig && viewingGig.id === gig.id) {
+        setViewingGig({ ...viewingGig, status: nextStatus });
+      }
+
+      setSuccessMessage(`Gig status updated to ${nextStatus === 'ACTIVE' ? 'Active' : 'Paused'}.`);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to toggle status.');
     } finally {
@@ -547,7 +586,8 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
   };
 
   // Open Edit Modal
-  const handleOpenEdit = (gig: IGig) => {
+  const handleOpenEdit = (gig: IGig, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setEditingGig(gig);
     const existingPackages = gig.packages || [];
     const formattedPackages: IPackageInput[] = (['BASIC', 'STANDARD', 'PREMIUM'] as const).map(
@@ -587,7 +627,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     setIsSubmittingEdit(true);
     setErrorMessage(null);
     try {
-      await updateGig(editingGig.id, {
+      const updated = await updateGig(editingGig.id, {
         title: editFormData.title,
         description: editFormData.description,
         category: editFormData.category,
@@ -596,6 +636,14 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
         status: editFormData.status,
         packages: editFormData.packages,
       });
+
+      // Instant state update
+      setGigs((prev) =>
+        prev.map((g) => (g.id === editingGig.id ? { ...g, ...updated } : g))
+      );
+      if (viewingGig && viewingGig.id === editingGig.id) {
+        setViewingGig({ ...viewingGig, ...updated });
+      }
 
       setSuccessMessage('Gig details updated successfully!');
       setEditingGig(null);
@@ -615,7 +663,12 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     try {
       await deleteGig(deletingGig.id);
       setSuccessMessage(`Gig "${deletingGig.title}" deleted successfully.`);
+
+      // Instant state update
       setGigs((prev) => prev.filter((g) => g.id !== deletingGig.id));
+      if (viewingGig && viewingGig.id === deletingGig.id) {
+        setViewingGig(null);
+      }
       setDeletingGig(null);
       loadGigs();
     } catch (err: any) {
@@ -623,6 +676,12 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     } finally {
       setIsSubmittingDelete(false);
     }
+  };
+
+  // Open Details Modal
+  const handleOpenDetails = (gig: IGig) => {
+    setViewingGig(gig);
+    setActiveGalleryIndex(0);
   };
 
   return (
@@ -639,12 +698,12 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
               <span>{isSuperAdmin ? 'Platform Gig Control' : 'Provider Service Center'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              {isSuperAdmin ? 'Gigs & Marketplace Offerings' : 'My Gigs & Pricing Tiers'}
+              {isSuperAdmin ? 'Gigs Management & Services' : 'My Gigs & Pricing Tiers'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               {isSuperAdmin
-                ? 'Super Admin oversight for all marketplace consulting services. Create new gigs under active categories like Webdevelopment, manage tiers, and moderate live status.'
-                : 'Create and showcase high-converting consulting packages with Basic, Standard, and Premium tiers. Select categories like Webdevelopment to capture client inquiries.'}
+                ? 'Super Admin oversight for all marketplace consulting services. Review gig packages, moderate listings, and click any row to view full details.'
+                : 'Create and manage consulting services with Basic, Standard, and Premium packages. Click any row to review full tier details.'}
             </p>
           </div>
 
@@ -686,8 +745,8 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
             <div className="text-xl font-black text-emerald-400 mt-0.5">{activeGigsCount}</div>
           </div>
           <div className="bg-white/5 backdrop-blur-xs rounded-2xl p-3 border border-white/5">
-            <div className="text-[11px] font-medium text-slate-400">Web Development</div>
-            <div className="text-xl font-black text-indigo-300 mt-0.5">{webDevGigsCount}</div>
+            <div className="text-[11px] font-medium text-slate-400">Active Categories</div>
+            <div className="text-xl font-black text-indigo-300 mt-0.5">{categories.length}</div>
           </div>
           <div className="bg-white/5 backdrop-blur-xs rounded-2xl p-3 border border-white/5">
             <div className="text-[11px] font-medium text-slate-400">Account Tier</div>
@@ -737,7 +796,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by gig title, description, or tags..."
+            placeholder="Search gigs by title, tags, or provider..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800 transition-all"
           />
           {searchTerm && (
@@ -751,9 +810,8 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
           )}
         </div>
 
-        {/* Filter Dropdowns */}
+        {/* Filter Dropdowns (Strictly Dynamic from Super Admin) */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Category Dropdown (with Webdevelopment) */}
           <div className="relative">
             <select
               value={selectedCategory}
@@ -763,14 +821,13 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
               <option value="ALL">All Categories</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat} {cat.toLowerCase() === 'webdevelopment' ? '★ (Admin Added)' : ''}
+                  {cat}
                 </option>
               ))}
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Status Dropdown */}
           <div className="relative">
             <select
               value={selectedStatus}
@@ -785,7 +842,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Refresh */}
           <button
             type="button"
             onClick={loadGigs}
@@ -798,308 +854,532 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
         </div>
       </div>
 
-      {/* 3. Gigs Content List / Table */}
-      {isLoading ? (
-        <div className="bg-white rounded-3xl p-12 border border-slate-100 text-center space-y-3 shadow-xs">
-          <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Loading your service gigs...
-          </p>
-        </div>
-      ) : gigs.length === 0 ? (
-        /* Empty State */
-        <div className="bg-white rounded-3xl p-12 border border-dashed border-slate-200 text-center space-y-5 shadow-xs max-w-2xl mx-auto my-6">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-            <Briefcase className="w-8 h-8 stroke-[2.2]" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-black text-slate-800">
-              No Gigs Found
-            </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              {searchTerm || selectedCategory !== 'ALL' || selectedStatus !== 'ALL'
-                ? 'No gigs matched your current filter criteria. Try clearing your search or category filter.'
-                : 'You have not created any service gigs yet. Create your first gig under "Webdevelopment" with Basic, Standard, and Premium packages!'}
+      {/* 3. SOFT UI GIGS TABLE (Replaces card grid as requested) */}
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] overflow-hidden">
+        {isLoading ? (
+          <div className="p-16 text-center space-y-3">
+            <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Loading Gigs Table...
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        ) : displayedGigs.length === 0 ? (
+          <div className="p-16 text-center space-y-4 max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-3xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
+              <Briefcase className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">No Gigs Found</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {searchTerm || selectedCategory !== 'ALL' || selectedStatus !== 'ALL'
+                  ? 'No gigs match your search filters. Try clearing filters.'
+                  : 'Start by publishing your first gig using the button below.'}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 handleApplyWebDevTemplate();
                 setIsCreateModalOpen(true);
               }}
-              className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
             >
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <span>Create Web Development Gig</span>
+              <Plus className="w-4 h-4" />
+              <span>Create New Gig</span>
             </button>
-
-            {(searchTerm || selectedCategory !== 'ALL' || selectedStatus !== 'ALL') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedCategory('ALL');
-                  setSelectedStatus('ALL');
-                }}
-                className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
-              >
-                Clear Filters
-              </button>
-            )}
           </div>
-        </div>
-      ) : (
-        /* Gigs Grid / Cards */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {gigs.map((gig) => {
-            const basicPkg = gig.packages?.find((p) => p.tier === 'BASIC');
-            const standardPkg = gig.packages?.find((p) => p.tier === 'STANDARD');
-            const premiumPkg = gig.packages?.find((p) => p.tier === 'PREMIUM');
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  <th className="py-4 px-6">Gig Service & Title</th>
+                  <th className="py-4 px-4">Category</th>
+                  <th className="py-4 px-4">Tiers & Pricing</th>
+                  {isSuperAdmin && <th className="py-4 px-4">Provider</th>}
+                  <th className="py-4 px-4 text-center">Performance</th>
+                  <th className="py-4 px-4 text-center">Status</th>
+                  <th className="py-4 px-6 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {displayedGigs.map((gig) => {
+                  const basicPkg = gig.packages?.find((p) => p.tier === 'BASIC');
+                  const standardPkg = gig.packages?.find((p) => p.tier === 'STANDARD');
+                  const premiumPkg = gig.packages?.find((p) => p.tier === 'PREMIUM');
+                  const isGigActive = gig.status === 'ACTIVE';
+                  const thumbnail = gig.images?.[0] || DEFAULT_WEB_DEV_IMAGE;
 
-            const isGigActive = gig.status === 'ACTIVE';
-            const thumbnail = gig.images?.[0] || DEFAULT_WEB_DEV_IMAGE;
-
-            return (
-              <div
-                key={gig.id}
-                className="bg-white rounded-3xl border border-slate-100 hover:border-slate-200 shadow-[0_4px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all overflow-hidden flex flex-col justify-between group"
-              >
-                <div>
-                  {/* Top Image & Header */}
-                  <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                    <img
-                      src={thumbnail}
-                      alt={gig.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-
-                    {/* Category & Status Badges */}
-                    <div className="absolute top-3 left-3 flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/90 backdrop-blur-md text-slate-900 shadow-sm flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-emerald-600" />
-                        <span>{gig.category}</span>
-                      </span>
-
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-sm ${
-                          isGigActive
-                            ? 'bg-emerald-500 text-white'
-                            : gig.status === 'PAUSED'
-                            ? 'bg-amber-400 text-slate-900'
-                            : 'bg-slate-600 text-white'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isGigActive ? 'bg-white animate-pulse' : 'bg-slate-900'
-                          }`}
-                        />
-                        <span>{gig.status}</span>
-                      </span>
-                    </div>
-
-                    {/* Orders / Rating on Image Bottom */}
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 font-bold">
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                          <span>{gig.averageRating > 0 ? gig.averageRating.toFixed(1) : 'New'}</span>
-                          <span className="text-slate-300 font-normal">({gig.totalReviews})</span>
-                        </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="flex items-center gap-1 text-slate-200">
-                          <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{gig.totalSold || 0} orders</span>
-                        </span>
-                      </div>
-
-                      {/* Starting Price */}
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-300 block uppercase font-medium">
-                          From
-                        </span>
-                        <span className="text-base font-black text-emerald-400">
-                          ${basicPkg?.price ?? '—'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Body Content */}
-                  <div className="p-5 space-y-4">
-                    {/* Provider Info (Important for Super Admin) */}
-                    {isSuperAdmin && gig.provider && (
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">
-                            {gig.provider.name?.[0] || 'P'}
+                  return (
+                    <tr
+                      key={gig.id}
+                      onClick={() => handleOpenDetails(gig)}
+                      className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
+                    >
+                      {/* 1. Title & Thumbnail */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3.5 max-w-md">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 group-hover:border-emerald-500 transition-colors">
+                            <img
+                              src={thumbnail}
+                              alt={gig.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
                           </div>
-                          <div>
-                            <span className="font-bold text-slate-800">{gig.provider.name}</span>
-                            <span className="text-slate-400 text-[11px] block">{gig.provider.email}</span>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-slate-900 group-hover:text-emerald-600 transition-colors truncate">
+                              {gig.title}
+                            </p>
+                            <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                              {gig.description}
+                            </p>
+                            {gig.tags && gig.tags.length > 0 && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {gig.tags.slice(0, 2).map((t, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md"
+                                  >
+                                    #{t}
+                                  </span>
+                                ))}
+                                {gig.tags.length > 2 && (
+                                  <span className="text-[9px] text-slate-400">
+                                    +{gig.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100">
-                          Provider Gig
+                      </td>
+
+                      {/* 2. Category */}
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/60 shadow-2xs">
+                          <Tag className="w-3 h-3 text-emerald-600" />
+                          <span>{gig.category}</span>
                         </span>
-                      </div>
-                    )}
+                      </td>
 
-                    {/* Title */}
-                    <div>
-                      <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug line-clamp-2">
-                        {gig.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                        {gig.description}
-                      </p>
-                    </div>
-
-                    {/* 3 Package Tiers Comparison Bar */}
-                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                        <span>Configured Package Tiers</span>
-                        <span className="text-emerald-600 font-extrabold">3 Tiers Active</span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        {/* Basic */}
-                        <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
-                          <span className="text-[9px] font-bold uppercase text-slate-400 block">
-                            Basic
-                          </span>
-                          <span className="text-xs font-black text-slate-900 block mt-0.5">
-                            ${basicPkg?.price ?? 'N/A'}
-                          </span>
-                          <span className="text-[9px] text-slate-500 flex items-center justify-center gap-0.5 mt-0.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {basicPkg?.deliveryTimeInDays ?? 1}d
-                          </span>
-                        </div>
-
-                        {/* Standard */}
-                        <div className="p-2 rounded-xl bg-emerald-50/50 border border-emerald-100/60 shadow-2xs">
-                          <span className="text-[9px] font-bold uppercase text-emerald-600 block">
-                            Standard
-                          </span>
-                          <span className="text-xs font-black text-emerald-700 block mt-0.5">
-                            ${standardPkg?.price ?? 'N/A'}
-                          </span>
-                          <span className="text-[9px] text-emerald-600 flex items-center justify-center gap-0.5 mt-0.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {standardPkg?.deliveryTimeInDays ?? 3}d
-                          </span>
-                        </div>
-
-                        {/* Premium */}
-                        <div className="p-2 rounded-xl bg-purple-50/50 border border-purple-100/60 shadow-2xs">
-                          <span className="text-[9px] font-bold uppercase text-purple-600 block">
-                            Premium
-                          </span>
-                          <span className="text-xs font-black text-purple-700 block mt-0.5">
-                            ${premiumPkg?.price ?? 'N/A'}
-                          </span>
-                          <span className="text-[9px] text-purple-600 flex items-center justify-center gap-0.5 mt-0.5">
-                            <Clock className="w-2.5 h-2.5" />
-                            {premiumPkg?.deliveryTimeInDays ?? 7}d
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    {gig.tags && gig.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {gig.tags.slice(0, 4).map((tag, idx) => (
+                      {/* 3. Tiers & Pricing Breakdown */}
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
                           <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600"
+                            className="px-2 py-1 rounded-lg bg-slate-100 text-slate-800 text-[10px] font-bold border border-slate-200"
+                            title={`Basic: $${basicPkg?.price ?? 'N/A'}`}
                           >
-                            #{tag}
+                            B: ${basicPkg?.price ?? '—'}
                           </span>
-                        ))}
-                        {gig.tags.length > 4 && (
-                          <span className="text-[10px] font-semibold text-slate-400 self-center">
-                            +{gig.tags.length - 4} more
+                          <span
+                            className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200"
+                            title={`Standard: $${standardPkg?.price ?? 'N/A'}`}
+                          >
+                            S: ${standardPkg?.price ?? '—'}
                           </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                          <span
+                            className="px-2 py-1 rounded-lg bg-purple-100 text-purple-800 text-[10px] font-bold border border-purple-200"
+                            title={`Premium: $${premiumPkg?.price ?? 'N/A'}`}
+                          >
+                            P: ${premiumPkg?.price ?? '—'}
+                          </span>
+                        </div>
+                      </td>
 
-                {/* Bottom Actions Bar */}
-                <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
-                  {/* Status Toggle Button */}
-                  <button
-                    type="button"
-                    disabled={togglingId === gig.id}
-                    onClick={() => handleToggleStatus(gig)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      isGigActive
-                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-800'
-                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'
+                      {/* 4. Provider (Super Admin View) */}
+                      {isSuperAdmin && (
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          {gig.provider ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px]">
+                                {gig.provider.name?.[0] || 'P'}
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-800 block text-xs">
+                                  {gig.provider.name}
+                                </span>
+                                <span className="text-slate-400 text-[10px] block">
+                                  {gig.provider.email}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* 5. Performance */}
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex flex-col items-center">
+                          <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span>{gig.averageRating > 0 ? gig.averageRating.toFixed(1) : 'New'}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <ShoppingBag className="w-2.5 h-2.5 text-slate-400" />
+                            <span>{gig.totalSold || 0} sold</span>
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 6. Status & Quick Toggle */}
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          disabled={togglingId === gig.id}
+                          onClick={(e) => handleToggleStatus(gig, e)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                            isGigActive
+                              ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'
+                              : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                          }`}
+                          title={`Click to ${isGigActive ? 'Pause' : 'Activate'}`}
+                        >
+                          {togglingId === gig.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isGigActive ? 'bg-emerald-600 animate-pulse' : 'bg-amber-600'
+                              }`}
+                            />
+                          )}
+                          <span>{gig.status}</span>
+                        </button>
+                      </td>
+
+                      {/* 7. Action Buttons */}
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          {/* View Details Modal Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetails(gig);
+                            }}
+                            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="View Full Package Details"
+                          >
+                            <Eye className="w-4 h-4 text-slate-700" />
+                          </button>
+
+                          {/* Edit */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEdit(gig, e)}
+                            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Edit Gig"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
+                          {/* External Link */}
+                          <Link
+                            href={`/gigs/${gig.id}`}
+                            target="_blank"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                            title="View Live in Marketplace"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
+
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingGig(gig);
+                            }}
+                            className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete Gig"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* 4. GIG DETAILS MODAL (Interactive Tier Inspection)        */}
+      {/* ========================================================= */}
+      {viewingGig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 my-8 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header Banner */}
+            <div className="relative p-6 bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 text-white flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500 text-slate-950 shadow-xs flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    <span>{viewingGig.category}</span>
+                  </span>
+                  <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-xs ${
+                      viewingGig.status === 'ACTIVE'
+                        ? 'bg-emerald-100 text-emerald-900'
+                        : 'bg-amber-100 text-amber-900'
                     }`}
                   >
-                    {togglingId === gig.id ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : isGigActive ? (
-                      <EyeOff className="w-3.5 h-3.5" />
-                    ) : (
-                      <Eye className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isGigActive ? 'Pause Gig' : 'Activate'}</span>
-                  </button>
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        viewingGig.status === 'ACTIVE' ? 'bg-emerald-600 animate-pulse' : 'bg-amber-600'
+                      }`}
+                    />
+                    <span>{viewingGig.status}</span>
+                  </span>
+                </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {/* View Live */}
-                    <Link
-                      href={`/gigs/${gig.id}`}
-                      target="_blank"
-                      className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 transition-colors"
-                      title="View Live in Marketplace"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
+                <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
+                  {viewingGig.title}
+                </h3>
 
-                    {/* Edit */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(gig)}
-                      className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
-                      title="Edit Gig & Packages"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                {viewingGig.provider && (
+                  <p className="text-xs text-slate-300 flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>By {viewingGig.provider.name} ({viewingGig.provider.email})</span>
+                  </p>
+                )}
+              </div>
 
-                    {/* Delete */}
-                    <button
-                      type="button"
-                      onClick={() => setDeletingGig(gig)}
-                      className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors cursor-pointer"
-                      title="Delete Gig"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              <button
+                type="button"
+                onClick={() => setViewingGig(null)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Image Preview */}
+              {viewingGig.images && viewingGig.images.length > 0 && (
+                <div className="space-y-3">
+                  <div className="relative aspect-video sm:aspect-21/9 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
+                    <img
+                      src={viewingGig.images[activeGalleryIndex] || viewingGig.images[0]}
+                      alt={viewingGig.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
+
+                  {viewingGig.images.length > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {viewingGig.images.map((imgUrl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setActiveGalleryIndex(idx)}
+                          className={`relative w-16 h-12 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                            activeGalleryIndex === idx
+                              ? 'border-emerald-500 scale-105 shadow-md'
+                              : 'border-slate-200 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Description */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>About This Consulting Service</span>
+                </h4>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                  {viewingGig.description}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Tags */}
+              {viewingGig.tags && viewingGig.tags.length > 0 && (
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
+                    Service Tags
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {viewingGig.tags.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3 PACKAGE TIERS SIDE-BY-SIDE (BASIC, STANDARD, PREMIUM) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
+                    3 Configured Package Tiers
+                  </h4>
+                  <span className="text-xs font-bold text-emerald-600">All Tiers Active</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(['BASIC', 'STANDARD', 'PREMIUM'] as const).map((tier) => {
+                    const pkg = viewingGig.packages?.find((p) => p.tier === tier);
+                    const tierStyle =
+                      tier === 'BASIC'
+                        ? 'border-slate-200 bg-white'
+                        : tier === 'STANDARD'
+                        ? 'border-emerald-300 bg-emerald-50/20 shadow-md ring-2 ring-emerald-500/20'
+                        : 'border-purple-300 bg-purple-50/20 shadow-sm';
+
+                    const tierBadge =
+                      tier === 'BASIC'
+                        ? 'bg-slate-100 text-slate-800'
+                        : tier === 'STANDARD'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-purple-600 text-white';
+
+                    return (
+                      <div
+                        key={tier}
+                        className={`rounded-2xl border p-5 space-y-4 flex flex-col justify-between ${tierStyle}`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${tierBadge}`}
+                            >
+                              {tier}
+                            </span>
+                            <span className="text-xs font-bold text-slate-400">
+                              {tier === 'BASIC' ? 'Tier 1' : tier === 'STANDARD' ? 'Tier 2' : 'Tier 3'}
+                            </span>
+                          </div>
+
+                          <div>
+                            <h5 className="font-extrabold text-sm text-slate-900">
+                              {pkg?.name || `${tier} Package`}
+                            </h5>
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                              {pkg?.description || 'Package details'}
+                            </p>
+                          </div>
+
+                          <div className="pt-1">
+                            <span className="text-2xl font-black text-slate-900">
+                              ${pkg?.price ?? 0}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium ml-1">USD</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs text-slate-600">
+                            <div className="flex items-center gap-1 font-semibold">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{pkg?.deliveryTimeInDays ?? 1} Days</span>
+                            </div>
+                            <div className="flex items-center gap-1 font-semibold">
+                              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{pkg?.revisions ?? 1} Revisions</span>
+                            </div>
+                          </div>
+
+                          {/* Features */}
+                          <div className="space-y-2 pt-2 border-t border-slate-100">
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                              Included Deliverables
+                            </span>
+                            <div className="space-y-1.5">
+                              {pkg?.features && pkg.features.length > 0 ? (
+                                pkg.features.map((feat, fIdx) => (
+                                  <div
+                                    key={fIdx}
+                                    className="flex items-start gap-2 text-xs text-slate-700 font-medium"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                    <span>{feat}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-slate-400 italic">Core service included</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setViewingGig(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white transition-colors"
+              >
+                Close
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleStatus(viewingGig)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewingGig.status === 'ACTIVE'
+                      ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                      : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  }`}
+                >
+                  {viewingGig.status === 'ACTIVE' ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <span>{viewingGig.status === 'ACTIVE' ? 'Pause Gig' : 'Activate Gig'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingGig;
+                    setViewingGig(null);
+                    handleOpenEdit(target);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit Gig</span>
+                </button>
+
+                <Link
+                  href={`/gigs/${viewingGig.id}`}
+                  target="_blank"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>View in Marketplace</span>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* 4. CREATE GIG MODAL WIZARD                                 */}
+      {/* 5. CREATE GIG WIZARD MODAL                                */}
       {/* ========================================================= */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
           <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 my-8 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold uppercase tracking-wider mb-1">
@@ -1108,7 +1388,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 </div>
                 <h3 className="text-lg font-black text-white">Create Consulting Gig</h3>
                 <p className="text-xs text-slate-300">
-                  Select your category (e.g. Webdevelopment), add images, and define Basic, Standard & Premium tiers.
+                  Select an admin-approved category and configure Basic, Standard & Premium tiers.
                 </p>
               </div>
 
@@ -1117,7 +1397,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                   type="button"
                   onClick={handleApplyWebDevTemplate}
                   className="hidden sm:flex px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors items-center gap-1.5 cursor-pointer border border-white/10"
-                  title="Auto-fill with professional Web Development template"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>Use Web Dev Preset</span>
@@ -1172,52 +1451,37 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                   3. Package Tiers (Basic/Std/Prem)
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={handleApplyWebDevTemplate}
-                className="sm:hidden text-xs font-extrabold text-emerald-600 hover:underline"
-              >
-                Auto-fill
-              </button>
             </div>
 
-            {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* STEP 1: Overview */}
+              {/* STEP 1 */}
               {createStep === 1 && (
                 <div className="space-y-5 animate-in fade-in duration-200">
-                  {/* Category Selection */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                      <span>Marketplace Category <span className="text-rose-500">*</span></span>
-                      <span className="text-[11px] text-slate-400 font-normal">
-                        Admin-created categories are available
-                      </span>
+                    <label className="text-xs font-bold text-slate-800 block">
+                      Marketplace Category <span className="text-rose-500">*</span>
                     </label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
                     >
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat} {cat.toLowerCase() === 'webdevelopment' ? '★ (Selected Category)' : ''}
-                        </option>
-                      ))}
+                      {categories.length === 0 ? (
+                        <option value="">No categories created by Super Admin yet</option>
+                      ) : (
+                        categories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))
+                      )}
                     </select>
-                    <p className="text-[11px] text-emerald-600 font-medium">
-                      ✓ &quot;{formData.category}&quot; selected. Providers can publish their consulting gigs directly under this category.
-                    </p>
                   </div>
 
-                  {/* Gig Title */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
                       <span>Gig Title <span className="text-rose-500">*</span></span>
-                      <span className="text-[11px] text-slate-400 font-normal">
-                        Min 5 characters (Start with &quot;I will...&quot;)
-                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal">Min 5 characters</span>
                     </label>
                     <input
                       type="text"
@@ -1228,19 +1492,16 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                     />
                   </div>
 
-                  {/* Description */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
                       <span>Gig Description <span className="text-rose-500">*</span></span>
-                      <span className="text-[11px] text-slate-400 font-normal">
-                        Min 20 characters (explain your expertise & deliverable)
-                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal">Min 20 characters</span>
                     </label>
                     <textarea
                       rows={5}
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Detail your consulting services, technologies used, what clients can expect, and why they should choose your gig..."
+                      placeholder="Detail your consulting services, technologies used, what clients can expect..."
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800 leading-relaxed"
                     />
                     <div className="text-right text-[11px] text-slate-400">
@@ -1248,10 +1509,9 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                     </div>
                   </div>
 
-                  {/* Tags */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-800 block">
-                      Search Tags (Help clients find your gig)
+                      Search Tags
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -1264,7 +1524,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                             handleAddTag();
                           }
                         }}
-                        placeholder="Add a tag and press Enter (e.g. webdevelopment, nextjs, react)..."
+                        placeholder="Add tag (e.g. webdevelopment, nextjs) and press Enter..."
                         className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
                       />
                       <button
@@ -1297,17 +1557,16 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 </div>
               )}
 
-              {/* STEP 2: Media & Images */}
+              {/* STEP 2 */}
               {createStep === 2 && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                   <div className="space-y-2">
                     <h4 className="text-sm font-black text-slate-900">Gig Showcase Gallery</h4>
                     <p className="text-xs text-slate-500">
-                      Upload high quality project previews or paste image URLs (up to 6 images). Recommended size: 1200x800px.
+                      Upload project previews or paste image URLs.
                     </p>
                   </div>
 
-                  {/* Add via URL */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 block">
                       Add Image via URL
@@ -1325,22 +1584,20 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                         onClick={handleAddImageUrl}
                         className="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 cursor-pointer"
                       >
-                        Add Image URL
+                        Add Image
                       </button>
                     </div>
                   </div>
 
-                  {/* Or upload file */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 block">
-                      Or Upload Image Files (Cloudinary storage)
+                      Or Upload Image Files
                     </label>
                     <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-slate-400 transition-colors cursor-pointer bg-slate-50/50">
                       <Upload className="w-8 h-8 text-slate-400 mb-2" />
                       <span className="text-xs font-bold text-slate-700">
                         {isUploadingImage ? 'Uploading image...' : 'Click to select images (PNG, JPG, WebP)'}
                       </span>
-                      <span className="text-[10px] text-slate-400 mt-1">Up to 6 images</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1352,51 +1609,36 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                     </label>
                   </div>
 
-                  {/* Image Previews */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-slate-800 block">
-                      Current Images ({formData.images?.length || 0})
-                    </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {formData.images?.map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {formData.images?.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                      >
+                        <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center cursor-pointer shadow-md"
                         >
-                          <img
-                            src={url}
-                            alt={`Preview ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity cursor-pointer shadow-md"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                          {idx === 0 && (
-                            <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[9px] font-bold">
-                              Cover Image
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: 3 Package Tiers (BASIC, STANDARD, PREMIUM) */}
+              {/* STEP 3 */}
               {createStep === 3 && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div>
                       <h4 className="text-sm font-black text-slate-900">
-                        Package Pricing & Tier Breakdown
+                        3 Package Tiers (Basic, Standard & Premium)
                       </h4>
                       <p className="text-xs text-slate-500">
-                        Every gig must include all 3 tiers: Basic, Standard, and Premium packages.
+                        Every gig must include all 3 tiers.
                       </p>
                     </div>
 
@@ -1410,7 +1652,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                     </button>
                   </div>
 
-                  {/* 3 Tier Columns */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {(['BASIC', 'STANDARD', 'PREMIUM'] as const).map((tier) => {
                       const pkg = formData.packages.find((p) => p.tier === tier)!;
@@ -1434,7 +1675,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                           className={`rounded-2xl border p-4 space-y-4 shadow-2xs flex flex-col justify-between ${tierColor}`}
                         >
                           <div className="space-y-3.5">
-                            {/* Tier Badge */}
                             <div className="flex items-center justify-between">
                               <span
                                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${badgeColor}`}
@@ -1446,7 +1686,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                               </span>
                             </div>
 
-                            {/* Name */}
                             <div className="space-y-1">
                               <label className="text-[11px] font-bold text-slate-700 block">
                                 Package Name
@@ -1458,11 +1697,10 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                                   handlePackageFieldChange(tier, 'name', e.target.value)
                                 }
                                 placeholder={`${tier} name...`}
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:border-slate-800"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900"
                               />
                             </div>
 
-                            {/* Description */}
                             <div className="space-y-1">
                               <label className="text-[11px] font-bold text-slate-700 block">
                                 Description
@@ -1473,12 +1711,10 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                                 onChange={(e) =>
                                   handlePackageFieldChange(tier, 'description', e.target.value)
                                 }
-                                placeholder="What is included in this package..."
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-700 focus:outline-hidden focus:border-slate-800"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-700"
                               />
                             </div>
 
-                            {/* Price & Delivery */}
                             <div className="grid grid-cols-2 gap-2">
                               <div className="space-y-1">
                                 <label className="text-[11px] font-bold text-slate-700 block">
@@ -1522,10 +1758,9 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                               </div>
                             </div>
 
-                            {/* Revisions */}
                             <div className="space-y-1">
                               <label className="text-[11px] font-bold text-slate-700 block">
-                                Revisions Included
+                                Revisions
                               </label>
                               <input
                                 type="number"
@@ -1542,12 +1777,11 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                               />
                             </div>
 
-                            {/* Features Checklist */}
                             <div className="space-y-1.5 pt-1">
                               <label className="text-[11px] font-bold text-slate-700 block">
-                                Package Features
+                                Features
                               </label>
-                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                              <div className="space-y-1 max-h-28 overflow-y-auto">
                                 {pkg.features?.map((f, fIdx) => (
                                   <div
                                     key={fIdx}
@@ -1568,7 +1802,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                                 ))}
                               </div>
 
-                              {/* Add Feature input */}
                               <div className="flex gap-1 pt-1">
                                 <input
                                   type="text"
@@ -1610,7 +1843,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
               )}
             </div>
 
-            {/* Modal Footer Controls */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               {createStep > 1 ? (
                 <button
@@ -1667,7 +1899,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
       )}
 
       {/* ========================================================= */}
-      {/* 5. EDIT GIG MODAL                                         */}
+      {/* 6. EDIT GIG MODAL                                         */}
       {/* ========================================================= */}
       {editingGig && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
@@ -1687,7 +1919,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
             </div>
 
             <form onSubmit={handleEditSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-              {/* Category */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-800 block">Category (Admin Approved)</label>
                 <select
@@ -1708,7 +1939,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 </select>
               </div>
 
-              {/* Title */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-800 block">Title</label>
                 <input
@@ -1719,7 +1949,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 />
               </div>
 
-              {/* Description */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-800 block">Description</label>
                 <textarea
@@ -1730,7 +1959,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 />
               </div>
 
-              {/* Status */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-800 block">Listing Status</label>
                 <select
@@ -1749,7 +1977,6 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
                 </select>
               </div>
 
-              {/* Pricing Tiers */}
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
                   Update Package Tiers
@@ -1827,7 +2054,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
       )}
 
       {/* ========================================================= */}
-      {/* 6. DELETE CONFIRMATION MODAL                              */}
+      {/* 7. DELETE CONFIRMATION MODAL                              */}
       {/* ========================================================= */}
       {deletingGig && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -1840,7 +2067,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
               <h3 className="text-lg font-black text-slate-900">Delete Gig Offering?</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 Are you sure you want to permanently delete{' '}
-                <strong className="text-slate-800">&quot;{deletingGig.title}&quot;</strong>? This action will remove the gig and its 3 package tiers from the marketplace.
+                <strong className="text-slate-800">&quot;{deletingGig.title}&quot;</strong>? This action will remove the gig and its 3 package tiers.
               </p>
             </div>
 

@@ -332,10 +332,13 @@ export interface IGigsApiResponse {
 const clientGigsCache = new Map<string, { data: IGigsApiResponse['data']; timestamp: number }>();
 const CLIENT_CACHE_TTL = 60 * 1000; // 60 seconds
 
-export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse['data']> {
+export async function getGigs(
+  params?: IGetGigsParams & { noCache?: boolean }
+): Promise<IGigsApiResponse['data']> {
   const query = new URLSearchParams();
   if (params?.searchTerm) query.append('searchTerm', params.searchTerm);
-  if (params?.category && params.category !== 'All') query.append('category', params.category);
+  if (params?.category && params.category !== 'All' && params.category !== 'ALL')
+    query.append('category', params.category);
   if (params?.minPrice) query.append('minPrice', String(params.minPrice));
   if (params?.maxPrice) query.append('maxPrice', String(params.maxPrice));
   if (params?.sortBy) query.append('sortBy', params.sortBy);
@@ -343,25 +346,40 @@ export async function getGigs(params?: IGetGigsParams): Promise<IGigsApiResponse
   if (params?.page) query.append('page', String(params.page));
   if (params?.limit) query.append('limit', String(params.limit));
 
+  if (params?.noCache) {
+    query.append('_t', String(Date.now()));
+  }
+
   const url = `${API_BASE_URL}/gigs${query.toString() ? `?${query.toString()}` : ''}`;
 
-  // Instant 0ms memory cache hit
-  const cached = clientGigsCache.get(url);
-  if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
-    return cached.data;
+  // Instant 0ms memory cache hit (only when noCache is not specified)
+  if (!params?.noCache) {
+    const cached = clientGigsCache.get(url);
+    if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+      return cached.data;
+    }
   }
 
   const res = await fetch(url, {
-    next: { revalidate: 30 },
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+    },
   });
 
   const data = await res.json();
   if (!res.ok || !data.success) {
-    if (cached) return cached.data;
+    if (!params?.noCache) {
+      const cached = clientGigsCache.get(url);
+      if (cached) return cached.data;
+    }
     throw new Error(data.message || 'Failed to load gigs');
   }
 
-  clientGigsCache.set(url, { data: data.data, timestamp: Date.now() });
+  if (!params?.noCache) {
+    clientGigsCache.set(url, { data: data.data, timestamp: Date.now() });
+  }
   return data.data;
 }
 
@@ -979,9 +997,11 @@ export async function getMyGigs(): Promise<IMyGigsResponse> {
   const token = getAuthToken();
   if (!token) throw new Error('Please sign in to access your gigs.');
 
-  const res = await fetch(`${API_BASE_URL}/gigs/my-gigs`, {
+  const res = await fetch(`${API_BASE_URL}/gigs/my-gigs?_t=${Date.now()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
     },
     cache: 'no-store',
   });
