@@ -1386,7 +1386,7 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
                                         </span>
                                       </div>
                                       <span className="text-[10px] text-slate-400 font-medium">
-                                        {new Date(order.review.createdAt).toLocaleDateString()}
+                                        {order.review.createdAt ? new Date(order.review.createdAt).toLocaleDateString() : ''}
                                       </span>
                                     </div>
                                     <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic border-l-2 border-amber-200 pl-3 py-0.5">

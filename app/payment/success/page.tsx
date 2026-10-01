@@ -7,7 +7,7 @@ import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { verifyPaymentSession } from '@/lib/api';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [showConfetti, setShowConfetti] = useState(false);
@@ -118,5 +118,13 @@ export default function PaymentSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-[#fafafa]" />}>
+      <PaymentSuccessContent />
+    </React.Suspense>
   );
 }
