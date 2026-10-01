@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardNavbar from './DashboardNavbar';
+import BlockedProviderSupport from './BlockedProviderSupport';
 import { Lock, ShieldAlert, LogIn, ArrowLeft, RefreshCw, LayoutDashboard } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -108,7 +109,12 @@ export default function DashboardLayout({
     );
   }
 
-  // 3. Client Role Guard (Clients do not have a dashboard)
+  // 3. Blocked Provider Guard
+  if (user.status === 'BLOCKED') {
+    return <BlockedProviderSupport />;
+  }
+
+  // 4. Client Role Guard (Clients do not have a dashboard)
   if (user.role === 'CLIENT') {
     return (
       <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">

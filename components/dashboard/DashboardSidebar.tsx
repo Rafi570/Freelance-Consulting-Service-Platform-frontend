@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
+import { getAllTicketsAdmin, getMyTickets } from '@/lib/api';
 import {
   LayoutDashboard,
   Table,
@@ -13,7 +14,8 @@ import {
   Users,
   ShoppingBag,
   SlidersHorizontal,
-  Briefcase
+  Briefcase,
+  MessageSquare
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +34,36 @@ export default function DashboardSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [notificationCount, setNotificationCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        if (role === 'SUPER_ADMIN') {
+          const res = await getAllTicketsAdmin();
+          const pendingCount = (res.data?.data || []).filter((t: any) => t.status === 'PENDING').length;
+          setNotificationCount(pendingCount);
+        } else if (role === 'PROVIDER') {
+          const res = await getMyTickets();
+          const reviewCount = (res.data || []).filter((t: any) => t.status === 'IN_REVIEW').length;
+          setNotificationCount(reviewCount);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+    if (user) {
+      fetchNotifications();
+    }
+
+    // Listen for custom event when a ticket is read or created
+    const handleTicketUpdate = () => {
+      if (user) fetchNotifications();
+    };
+    
+    window.addEventListener('ticket-updated', handleTicketUpdate);
+    return () => window.removeEventListener('ticket-updated', handleTicketUpdate);
+  }, [role, user]);
 
   // Navigation items based on role
   const getNavItems = () => {
@@ -41,6 +73,7 @@ export default function DashboardSidebar({
         { label: 'Users & Roles', href: '/dashboard/users', icon: Users },
         { label: 'Manage Gigs', href: '/dashboard/gigs', icon: Briefcase },
         { label: 'Gig Filters', href: '/dashboard/filters', icon: SlidersHorizontal },
+        { label: 'Support & Appeals', href: '/dashboard/admin/support', icon: MessageSquare, badge: notificationCount },
       ];
     }
 
@@ -49,6 +82,7 @@ export default function DashboardSidebar({
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Gigs', href: '/dashboard/gigs', icon: Briefcase },
       { label: 'Explore Gigs', href: '/gigs', icon: Table },
+      { label: 'Support Center', href: '/dashboard/support', icon: MessageSquare, badge: notificationCount },
     ];
   };
 
@@ -136,6 +170,11 @@ export default function DashboardSidebar({
                     <Icon className="w-3.5 h-3.5 stroke-[2.2]" />
                   </div>
                   <span className="flex-1">{item.label}</span>
+                  {(item as any).badge > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-sm">
+                      {(item as any).badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}

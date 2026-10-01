@@ -1130,5 +1130,137 @@ export async function uploadGigImages(files: File[]): Promise<string[]> {
   return data.data?.images || [];
 }
 
+export const submitAppeal = async (email: string, message: string) => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
+  const res = await fetch(`${API_BASE_URL}/support/appeal`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ email, message, subject: 'Appeal for Account Unblocking' }),
+  });
 
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to submit appeal');
+  }
+
+  return data;
+};
+
+export const checkBlockStatus = async (email: string) => {
+  const res = await fetch(`${API_BASE_URL}/support/check-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to check block status');
+  }
+
+  return data;
+};
+
+export const getMyTickets = async () => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/support/my-tickets`, {
+    method: 'GET',
+    headers,
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch tickets');
+  }
+
+  return data;
+};
+
+export const sendMessage = async (ticketId: string, message: string) => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    let errorMsg = data.message || 'Failed to send message';
+    if (data.errorSources && data.errorSources.length > 0) {
+      errorMsg = data.errorSources.map((e: any) => e.message).join(', ');
+    }
+    throw new Error(errorMsg);
+  }
+
+  return data;
+};
+
+export const createTicket = async (subject: string, category: string, message: string) => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/support/tickets`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ subject, category, message }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    let errorMsg = data.message || 'Failed to create ticket';
+    if (data.errorSources && data.errorSources.length > 0) {
+      errorMsg = data.errorSources.map((e: any) => e.message).join(', ');
+    }
+    throw new Error(errorMsg);
+  }
+
+  return data;
+};
+
+export const getAllTicketsAdmin = async () => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/support/admin/tickets`, {
+    method: 'GET',
+    headers,
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch tickets');
+  }
+
+  return data;
+};
+
+export const reviewTicketAdmin = async (ticketId: string, action: 'APPROVE' | 'REJECT' | 'IN_REVIEW', adminNotes?: string) => {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/support/admin/tickets/${ticketId}/review`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ action, adminNotes }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to review ticket');
+  }
+
+  return data;
+};
