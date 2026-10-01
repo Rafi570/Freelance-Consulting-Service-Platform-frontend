@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { User, Menu, LogOut, ShieldCheck, UserCheck, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -18,14 +18,45 @@ export default function DashboardNavbar({
 }: DashboardNavbarProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Dynamic subtitle based on role
-  const subtitle =
-    role === 'SUPER_ADMIN'
+  // Dynamic title and subtitle based on route and role
+  let title = 'Dashboard';
+  let subtitle = 'Manage your platform resources and settings.';
+
+  if (pathname === '/dashboard') {
+    title = 'Dashboard';
+    subtitle = role === 'SUPER_ADMIN'
       ? 'Platform user moderation, role controls, active services, and system analytics.'
       : role === 'PROVIDER'
       ? 'Check your consulting gigs performance, active orders, and revenue.'
       : 'Track your ongoing consulting milestones, invoices, and active orders.';
+  } else if (pathname === '/dashboard/orders') {
+    title = role === 'CLIENT' ? 'My Orders' : 'Manage Orders';
+    subtitle = 'Track and manage your service orders and payments.';
+  } else if (pathname === '/dashboard/users') {
+    title = 'Users & Roles';
+    subtitle = 'Manage platform users, roles, and administrative access.';
+  } else if (pathname === '/dashboard/gigs') {
+    title = 'Manage Gigs';
+    subtitle = 'Oversee all consulting services and gig listings.';
+  } else if (pathname === '/dashboard/filters') {
+    title = 'Gig Filters';
+    subtitle = 'Configure global search filters and categories.';
+  } else if (pathname === '/dashboard/reviews') {
+    title = 'Reviews';
+    subtitle = 'Monitor and manage all client reviews across the platform.';
+  } else if (pathname === '/dashboard/profile') {
+    title = 'Profile';
+    subtitle = 'Manage your personal account details and preferences.';
+  } else if (pathname === '/dashboard/admin/support') {
+    title = 'Support & Appeals';
+    subtitle = 'Handle user tickets, support requests, and dispute appeals.';
+  } else {
+    const segments = pathname.split('/').filter(Boolean);
+    const lastSegment = segments[segments.length - 1] || 'Dashboard';
+    title = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+  }
 
   const handleSignOut = () => {
     logout();
@@ -48,11 +79,11 @@ export default function DashboardNavbar({
               Pages
             </Link>
             <span>/</span>
-            <span className="text-slate-700 font-semibold">Dashboard</span>
+            <span className="text-slate-700 font-semibold">{title}</span>
           </div>
 
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight mt-1">
-            Dashboard
+            {title}
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5 max-w-xl">
             {subtitle}

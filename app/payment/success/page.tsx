@@ -2,17 +2,25 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-
+import { useAuth } from '@/context/AuthContext';
 import { verifyPaymentSession } from '@/lib/api';
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [showConfetti, setShowConfetti] = useState(false);
+  const { user, isHydrated } = useAuth();
+  const router = useRouter();
+
+  const isClient = user?.role === 'CLIENT';
+
+  useEffect(() => {
+    if (isHydrated && !user) {
+      router.push('/');
+    }
+  }, [isHydrated, user, router]);
 
   useEffect(() => {
     // Small delay for the pop-in animation
@@ -28,8 +36,6 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa]">
-      <Navbar />
-      
       <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
         {/* Decorative Background Elements */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1dbf73]/5 rounded-full blur-3xl pointer-events-none" />
@@ -83,10 +89,10 @@ export default function PaymentSuccessPage() {
               {/* Action Buttons */}
               <div className="pt-6 space-y-3">
                 <Link
-                  href="/dashboard"
+                  href={isClient ? "/orders" : "/dashboard"}
                   className="w-full py-4 px-6 rounded-xl bg-[#1dbf73] hover:bg-[#19a463] text-white text-sm font-black transition-all duration-300 shadow-[0_8px_20px_-6px_rgba(29,191,115,0.4)] hover:shadow-[0_12px_25px_-6px_rgba(29,191,115,0.5)] hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
                 >
-                  <span>Go to Dashboard</span>
+                  <span>{isClient ? "Go to My Orders" : "Go to Dashboard"}</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 
@@ -111,8 +117,6 @@ export default function PaymentSuccessPage() {
 
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 }

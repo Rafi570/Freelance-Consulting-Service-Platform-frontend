@@ -157,20 +157,23 @@ export default function GigDetailsPage() {
     return userOrders.filter((o) => o.gigId === gigId);
   }, [userOrders, gigId]);
 
-  // Eligible order: COMPLETED and not yet reviewed
+  // Eligible order: COMPLETED and not yet reviewed (Only if current user is the client who placed it)
   const eligibleCompletedOrder = useMemo(() => {
+    if (user?.role !== 'CLIENT') return undefined;
     return ordersForThisGig.find((o) => o.status === 'COMPLETED' && !o.review);
-  }, [ordersForThisGig]);
+  }, [ordersForThisGig, user]);
 
   // Already reviewed order
   const alreadyReviewedOrder = useMemo(() => {
+    if (user?.role !== 'CLIENT') return undefined;
     return ordersForThisGig.find((o) => o.status === 'COMPLETED' && o.review);
-  }, [ordersForThisGig]);
+  }, [ordersForThisGig, user]);
 
   // Active in-progress/pending order
   const activePendingOrder = useMemo(() => {
+    if (user?.role !== 'CLIENT') return undefined;
     return ordersForThisGig.find((o) => o.status === 'PENDING' || o.status === 'IN_PROGRESS');
-  }, [ordersForThisGig]);
+  }, [ordersForThisGig, user]);
 
   // Gallery images (enrich with relevant demo portfolio work if only 1 image)
   const galleryImages = useMemo(() => {

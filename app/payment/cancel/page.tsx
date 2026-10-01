@@ -3,11 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { XCircle, ArrowLeft } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function PaymentCancelPage() {
   const [showError, setShowError] = useState(false);
+  const { user, isHydrated } = useAuth();
+  const router = useRouter();
+
+  const isClient = user?.role === 'CLIENT';
+
+  useEffect(() => {
+    if (isHydrated && !user) {
+      router.push('/');
+    }
+  }, [isHydrated, user, router]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowError(true), 150);
@@ -16,8 +26,6 @@ export default function PaymentCancelPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa]">
-      <Navbar />
-      
       <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
         {/* Decorative Background Elements */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -51,11 +59,11 @@ export default function PaymentCancelPage() {
               {/* Action Buttons */}
               <div className="pt-8 space-y-3">
                 <Link
-                  href="/dashboard"
+                  href={isClient ? "/orders" : "/dashboard"}
                   className="w-full py-4 px-6 rounded-xl bg-[#222325] hover:bg-[#404145] text-white text-sm font-black transition-all duration-300 shadow-[0_8px_20px_-6px_rgba(34,35,37,0.4)] hover:shadow-[0_12px_25px_-6px_rgba(34,35,37,0.5)] hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
                 >
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                  <span>Return to Dashboard</span>
+                  <span>{isClient ? "Return to My Orders" : "Return to Dashboard"}</span>
                 </Link>
                 
                 <Link
@@ -71,8 +79,6 @@ export default function PaymentCancelPage() {
           
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 }

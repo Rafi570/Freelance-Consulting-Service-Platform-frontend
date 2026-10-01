@@ -15,7 +15,8 @@ import {
   ShoppingBag,
   SlidersHorizontal,
   Briefcase,
-  MessageSquare
+  MessageSquare,
+  Star
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -74,6 +75,7 @@ export default function DashboardSidebar({
         { label: 'Users & Roles', href: '/dashboard/users', icon: Users },
         { label: 'Manage Gigs', href: '/dashboard/gigs', icon: Briefcase },
         { label: 'Gig Filters', href: '/dashboard/filters', icon: SlidersHorizontal },
+        { label: 'Reviews', href: '/dashboard/reviews', icon: Star },
         { label: 'Support & Appeals', href: '/dashboard/admin/support', icon: MessageSquare, badge: notificationCount },
       ];
     }

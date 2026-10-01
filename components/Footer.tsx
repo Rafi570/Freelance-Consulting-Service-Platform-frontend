@@ -15,13 +15,11 @@ export default function Footer() {
       ],
     },
     {
-      title: 'About',
+      title: 'Legal & About',
       links: [
-        { label: 'Careers', href: '#' },
-        { label: 'Press & News', href: '#' },
-        { label: 'Partnerships', href: '#' },
         { label: 'Privacy Policy', href: '/privacy' },
         { label: 'Terms of Service', href: '/terms' },
+        { label: 'About ConsulSphere', href: '/about' },
       ],
     },
     {
@@ -29,29 +27,15 @@ export default function Footer() {
       links: [
         { label: 'Help & Support Desk', href: '/support' },
         { label: 'Trust & Safety', href: '/support' },
-        { label: 'Block Appeal System', href: '/support' },
-        { label: 'Check Account Standing', href: '/support/check-status' },
         { label: 'Cancellation & Refunds', href: '/support' },
       ],
     },
     {
-      title: 'Community',
+      title: 'For Providers',
       links: [
-        { label: 'Customer Stories', href: '#' },
-        { label: 'Community Standards', href: '#' },
-        { label: 'Forum & Discussions', href: '#' },
-        { label: 'Events & Webinars', href: '#' },
-        { label: 'Creator Blog', href: '#' },
-      ],
-    },
-    {
-      title: 'More From ConsulSphere',
-      links: [
-        { label: 'ConsulSphere Pro', href: '/providers' },
-        { label: 'Unlimited Tier ($15/mo)', href: '/register?role=PROVIDER' },
-        { label: 'Stripe Escrow Guarantee', href: '/support' },
-        { label: 'Cloudinary Portfolios', href: '/support' },
-        { label: 'Super Admin Console', href: '#' },
+        { label: 'Become a Provider', href: '/register?role=PROVIDER' },
+        { label: 'Provider Dashboard', href: '/dashboard' },
+        { label: 'Escrow Guarantee', href: '/support' },
       ],
     },
   ];
@@ -60,8 +44,8 @@ export default function Footer() {
     <footer className="w-full bg-white border-t border-slate-200 text-slate-600 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         
-        {/* 5-Column Navigation Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+        {/* 4-Column Navigation Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {footerSections.map((sec) => (
             <div key={sec.title} className="space-y-3">
               <h4 className="text-sm font-bold text-slate-900 tracking-wide">

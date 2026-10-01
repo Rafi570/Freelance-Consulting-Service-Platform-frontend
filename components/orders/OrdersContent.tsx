@@ -40,6 +40,7 @@ import {
   DollarSign,
   TrendingUp,
   Table,
+  ChevronDown,
 } from 'lucide-react';
 
 type TabStatus = 'ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -85,6 +86,9 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
   const [reviewSubmitting, setReviewSubmitting] = useState<boolean>(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState<string | null>(null);
+
+  // Review Expansion State
+  const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
 
   const [updateStatusLoading, setUpdateStatusLoading] = useState<string | null>(null);
 
@@ -1221,8 +1225,9 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
                             : null;
                         
                         return (
-                          <tr key={order.id} className="hover:bg-slate-50/70 transition-colors group">
-                            {/* Order ID & Service */}
+                          <React.Fragment key={order.id}>
+                            <tr className="hover:bg-slate-50/70 transition-colors group">
+                              {/* Order ID & Service */}
                             <td className="py-4 px-5">
                               <div className="flex items-center gap-3">
                                 {gigImage ? (
@@ -1285,7 +1290,7 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
                             {/* Actions */}
                             <td className="py-4 px-5 text-right relative">
                               <div className="flex items-center justify-end gap-2">
-                                {isCompleted && !order.review && (
+                                {isCompleted && !order.review && user?.role === 'CLIENT' && (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1332,6 +1337,23 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
                                   </button>
                                 ) : null}
 
+                                {order.review && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedReviewId(expandedReviewId === order.id ? null : order.id)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer ${
+                                      expandedReviewId === order.id
+                                        ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    }`}
+                                    title="View Review"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                    <span>{order.review.rating}.0</span>
+                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedReviewId === order.id ? 'rotate-180' : ''}`} />
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => setSelectedOrderDetails(order)}
@@ -1343,6 +1365,39 @@ export default function OrdersContent({ isDashboard = false }: { isDashboard?: b
                               </div>
                             </td>
                           </tr>
+
+                          {/* Collapsible Review Row */}
+                          {expandedReviewId === order.id && order.review && (
+                            <tr className="bg-amber-50/30 border-b border-slate-100">
+                              <td colSpan={6} className="py-4 px-6">
+                                <div className="p-5 rounded-2xl bg-white border border-amber-100/50 shadow-xs flex items-start gap-4 animate-in fade-in slide-in-from-top-2 duration-300 max-w-3xl">
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                                    {order.client?.name?.substring(0, 2).toUpperCase() || 'CL'}
+                                  </div>
+                                  <div className="space-y-2 flex-1">
+                                    <div className="flex items-center gap-3">
+                                      <h4 className="text-sm font-bold text-slate-900">{order.client?.name || 'Verified Client'}</h4>
+                                      <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100">
+                                        {Array.from({ length: order.review.rating || 5 }).map((_, i) => (
+                                          <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                        ))}
+                                        <span className="text-[10px] font-black text-amber-800 ml-1">
+                                          {order.review.rating}.0
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 font-medium">
+                                        {new Date(order.review.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed italic border-l-2 border-amber-200 pl-3 py-0.5">
+                                      &quot;{order.review.comment}&quot;
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

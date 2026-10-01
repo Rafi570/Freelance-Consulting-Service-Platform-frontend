@@ -651,6 +651,48 @@ export async function cancelOrder(
   return data.data;
 }
 
+export async function getAllReviews(): Promise<any[]> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to view reviews.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/reviews/all`, {
+    headers: {
+      Authorization: token,
+    },
+    cache: 'no-store',
+  });
+  
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch reviews.');
+  }
+
+  return data.data;
+}
+
+export async function deleteReview(reviewId: string): Promise<any> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to delete a review.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: token,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to delete review.');
+  }
+
+  return data.data;
+}
+
 export async function submitOrderReview(
   orderId: string,
   rating: number,
