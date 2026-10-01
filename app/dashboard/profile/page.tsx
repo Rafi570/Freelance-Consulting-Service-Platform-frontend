@@ -33,15 +33,19 @@ import { useAuth } from '@/context/AuthContext';
 import {
   getMyProviderProfile,
   updateMyProviderProfile,
-  IUser
+  getMyGigs,
+  IUser,
+  IGig
 } from '@/lib/api';
 
 export default function DashboardProfilePage() {
   const { user: authUser, setSession, token } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'gigs' | 'reviews' | 'performance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'gigs'>('overview');
   const [profileData, setProfileData] = useState<IUser | null>(authUser);
   const [isLoading, setIsLoading] = useState(false);
+  const [providerGigs, setProviderGigs] = useState<IGig[]>([]);
+  const [gigsLoading, setGigsLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -64,7 +68,17 @@ export default function DashboardProfilePage() {
       if (!token) return;
       try {
         setIsLoading(true);
-        const data = await getMyProviderProfile();
+        setGigsLoading(true);
+        
+        const [data, gigsData] = await Promise.all([
+          getMyProviderProfile().catch(() => null),
+          getMyGigs().catch(() => null)
+        ]);
+        
+        if (gigsData && gigsData.gigs) {
+          setProviderGigs(gigsData.gigs);
+        }
+
         if (data) {
           setProfileData(data);
           setFormData({
@@ -85,6 +99,7 @@ export default function DashboardProfilePage() {
         }
       } finally {
         setIsLoading(false);
+        setGigsLoading(false);
       }
     }
 
@@ -161,73 +176,8 @@ export default function DashboardProfilePage() {
   const address = profileData?.profile?.address || formData.address || 'San Francisco, CA, USA';
   const portfolioUrl = profileData?.profile?.portfolioUrl || formData.portfolioUrl || 'https://consultant-portfolio.dev';
 
-  // Sample Gigs for Provider
-  const providerGigs = [
-    {
-      id: 'gig-1',
-      title: 'Full Stack Web & Cloud Architecture Consultation',
-      category: 'Software Engineering',
-      rating: 4.99,
-      reviewsCount: 38,
-      startingPrice: 250,
-      imageBg: 'from-blue-600 to-indigo-900',
-      tag: 'BESTSELLER',
-      ordersCount: 84,
-    },
-    {
-      id: 'gig-2',
-      title: 'UI/UX Design Systems & High-Fidelity Interactive Prototyping',
-      category: 'Design & Creative',
-      rating: 4.96,
-      reviewsCount: 24,
-      startingPrice: 180,
-      imageBg: 'from-emerald-600 to-teal-900',
-      tag: 'TOP RATED',
-      ordersCount: 52,
-    },
-    {
-      id: 'gig-3',
-      title: 'Executive Strategic Planning & Marketplace Monetization Audit',
-      category: 'Business Consulting',
-      rating: 5.0,
-      reviewsCount: 19,
-      startingPrice: 320,
-      imageBg: 'from-purple-600 to-slate-900',
-      tag: 'PRO SERVICE',
-      ordersCount: 31,
-    },
-  ];
+  // Fetched providerGigs are now stored in state
 
-  // Sample Client Reviews
-  const clientReviews = [
-    {
-      id: 'rev-1',
-      clientName: 'Alexander Hayes',
-      clientCompany: 'TechVentures Inc.',
-      rating: 5,
-      date: '2 days ago',
-      comment:
-        'Hasan demonstrated remarkable technical depth and strategic clarity. He overhauled our entire application architecture in under two weeks. Will definitely hire again!',
-    },
-    {
-      id: 'rev-2',
-      clientName: 'Sophia Lin',
-      clientCompany: 'Aura Studio',
-      rating: 5,
-      date: '1 week ago',
-      comment:
-        'Exceptional consultant. Thorough communication, delivered ahead of schedule, and provided invaluable insights that saved our startup thousands in hosting costs.',
-    },
-    {
-      id: 'rev-3',
-      clientName: 'Marcus Sterling',
-      clientCompany: 'Apex Capital',
-      rating: 4.9,
-      date: '3 weeks ago',
-      comment:
-        'Top notch consulting. Very professional and articulate. Provided comprehensive documentation and handover tutorials for our internal engineering team.',
-    },
-  ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -274,11 +224,7 @@ export default function DashboardProfilePage() {
                     {name}
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    {role === 'SUPER_ADMIN' ? 'Super Admin' : role === 'PROVIDER' ? 'Top Rated Provider' : 'Client Member'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                    <span>4.98 (42 Reviews)</span>
+                    {role === 'SUPER_ADMIN' ? 'Super Admin' : role === 'PROVIDER' ? 'Provider' : 'Client Member'}
                   </span>
                 </div>
 
@@ -293,7 +239,7 @@ export default function DashboardProfilePage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Member since {new Date().getFullYear() - 1}
+                    Member since {profileData?.createdAt ? new Date(profileData.createdAt).getFullYear() : new Date().getFullYear()}
                   </span>
                 </div>
               </div>
@@ -323,7 +269,7 @@ export default function DashboardProfilePage() {
           </div>
 
           {/* Quick Metrics Bar (Especially for Provider) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6 pt-5 border-t border-slate-100">
+          <div className="grid grid-cols-2 gap-3 mt-6 pt-5 border-t border-slate-100">
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
               <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
                 Hourly Rate
@@ -339,42 +285,6 @@ export default function DashboardProfilePage() {
               </span>
               <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
                 {experience}
-              </span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Completed Orders
-              </span>
-              <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
-                86 orders
-              </span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Response Time
-              </span>
-              <span className="text-base font-extrabold text-emerald-600 mt-0.5 block">
-                &lt; 1 hour
-              </span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                On-Time Delivery
-              </span>
-              <span className="text-base font-extrabold text-emerald-600 mt-0.5 block">
-                100%
-              </span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                Escrow Security
-              </span>
-              <span className="text-base font-extrabold text-purple-600 mt-0.5 block flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4" /> Protected
               </span>
             </div>
           </div>
@@ -407,32 +317,6 @@ export default function DashboardProfilePage() {
         >
           <Package className="w-3.5 h-3.5" />
           <span>Consulting Services &amp; Gigs ({providerGigs.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('reviews')}
-          className={`flex items-center gap-2 py-3 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'reviews'
-              ? 'bg-slate-900 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Star className="w-3.5 h-3.5" />
-          <span>Client Reviews ({clientReviews.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('performance')}
-          className={`flex items-center gap-2 py-3 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'performance'
-              ? 'bg-slate-900 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>Performance &amp; Metrics</span>
         </button>
       </div>
 
@@ -487,33 +371,7 @@ export default function DashboardProfilePage() {
               </div>
             </div>
 
-            {/* Provider Badges & Recognitions */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
-              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Recognitions &amp; Platform Badges</span>
-              </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-2xl bg-gradient-to-tr from-amber-50 to-orange-50 border border-amber-100">
-                  <Star className="w-6 h-6 text-amber-500 fill-amber-500 mb-1" />
-                  <h4 className="font-bold text-xs text-slate-800">Top Rated Seller</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Consistently maintaining 4.9+ rating and fast delivery.</p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gradient-to-tr from-emerald-50 to-teal-50 border border-emerald-100">
-                  <ShieldCheck className="w-6 h-6 text-emerald-600 mb-1" />
-                  <h4 className="font-bold text-xs text-slate-800">Identity Verified</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Government ID and business credentials verified.</p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-gradient-to-tr from-purple-50 to-indigo-50 border border-purple-100">
-                  <Clock className="w-6 h-6 text-purple-600 mb-1" />
-                  <h4 className="font-bold text-xs text-slate-800">Swift Responder</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Replies to client inquiries in under 60 minutes.</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column: Contact, Account Details & Verification Status */}
@@ -574,43 +432,7 @@ export default function DashboardProfilePage() {
               </div>
             </div>
 
-            {/* Trust & Security Checklist */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-3.5">
-              <h3 className="text-base font-bold text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-emerald-600" />
-                <span>Verification Checklist</span>
-              </h3>
 
-              <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                  <span className="font-medium text-slate-700">Email Verification</span>
-                  <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                  <span className="font-medium text-slate-700">Phone Verification</span>
-                  <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                  <span className="font-medium text-slate-700">Payment Payout Link</span>
-                  <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Connected
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                  <span className="font-medium text-slate-700">2-Factor Authentication</span>
-                  <span className="text-purple-600 font-bold flex items-center gap-1 text-[11px]">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Enabled
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -635,26 +457,50 @@ export default function DashboardProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {providerGigs.map((gig) => (
+            {gigsLoading ? (
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-10 text-center text-slate-500 text-sm font-medium">
+                Loading your gigs...
+              </div>
+            ) : providerGigs.length === 0 ? (
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-10 text-center text-slate-500 text-sm font-medium">
+                You haven't created any gigs yet.
+              </div>
+            ) : providerGigs.map((gig) => {
+              const startingPrice = gig.packages?.length
+                ? Math.min(...gig.packages.map((p) => p.price))
+                : 0;
+              const hasImage = gig.images && gig.images.length > 0;
+              const bgStyle = hasImage
+                ? { backgroundImage: `url(${gig.images[0]})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : {};
+              const bgClass = !hasImage ? 'bg-gradient-to-tr from-blue-600 to-indigo-900' : '';
+
+              return (
               <div
                 key={gig.id}
                 className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all group"
               >
                 <div>
                   {/* Gig Header / Visual Banner */}
-                  <div className={`h-36 bg-gradient-to-tr ${gig.imageBg} p-4 flex flex-col justify-between text-white relative`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 uppercase tracking-wider">
-                        {gig.tag}
-                      </span>
+                  <div 
+                    className={`h-36 p-4 flex flex-col justify-between text-white relative ${bgClass}`}
+                    style={bgStyle}
+                  >
+                    {hasImage && <div className="absolute inset-0 bg-black/40" />}
+                    <div className="flex items-center justify-between relative z-10">
+                      {gig.tags && gig.tags.length > 0 ? (
+                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 uppercase tracking-wider">
+                          {gig.tags[0]}
+                        </span>
+                      ) : <span />}
                       <span className="text-xs font-bold bg-slate-900/60 backdrop-blur-md px-2 py-0.5 rounded-lg flex items-center gap-1">
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        {gig.rating}
+                        {gig.averageRating?.toFixed(1) || '0.0'}
                       </span>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] font-medium text-white/80 uppercase tracking-wider">
+                    <div className="relative z-10">
+                      <span className="text-[11px] font-medium text-white/90 uppercase tracking-wider drop-shadow-md">
                         {gig.category}
                       </span>
                     </div>
@@ -667,9 +513,9 @@ export default function DashboardProfilePage() {
                     </h4>
 
                     <div className="flex items-center gap-3 mt-4 text-xs text-slate-500 font-medium">
-                      <span>{gig.ordersCount} orders completed</span>
+                      <span>{gig.totalSold || 0} orders completed</span>
                       <span>•</span>
-                      <span>{gig.reviewsCount} reviews</span>
+                      <span>{gig.totalReviews || 0} reviews</span>
                     </div>
                   </div>
                 </div>
@@ -678,7 +524,7 @@ export default function DashboardProfilePage() {
                 <div className="p-5 pt-3 border-t border-slate-100 flex items-center justify-between">
                   <div className="text-xs">
                     <span className="text-slate-400 text-[10px] uppercase font-bold block">Starting at</span>
-                    <span className="text-lg font-black text-slate-900">${gig.startingPrice}</span>
+                    <span className="text-lg font-black text-slate-900">${startingPrice}</span>
                   </div>
 
                   <Link
@@ -689,128 +535,12 @@ export default function DashboardProfilePage() {
                   </Link>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
 
-      {/* TAB 3: CLIENT REVIEWS */}
-      {activeTab === 'reviews' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
-          {/* Left Review Summary Scorecard */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] h-fit space-y-4">
-            <h3 className="text-base font-bold text-slate-800 pb-2 border-b border-slate-100">
-              Rating Overview
-            </h3>
 
-            <div className="text-center py-3">
-              <span className="text-5xl font-black text-slate-900 block">4.98</span>
-              <div className="flex items-center justify-center gap-1 my-2">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} className="w-5 h-5 text-amber-500 fill-amber-500" />
-                ))}
-              </div>
-              <p className="text-xs text-slate-400">Based on 42 verified client reviews</p>
-            </div>
-
-            {/* Rating distribution bars */}
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-8 text-slate-500 font-bold text-[11px]">5 Star</span>
-                <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-400 h-full w-[95%] rounded-full" />
-                </div>
-                <span className="w-8 text-right font-bold text-slate-600">40</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-8 text-slate-500 font-bold text-[11px]">4 Star</span>
-                <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-400 h-full w-[5%] rounded-full" />
-                </div>
-                <span className="w-8 text-right font-bold text-slate-600">2</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-8 text-slate-500 font-bold text-[11px]">3 Star</span>
-                <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-slate-200 h-full w-0 rounded-full" />
-                </div>
-                <span className="w-8 text-right text-slate-400">0</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Review List */}
-          <div className="lg:col-span-2 space-y-4">
-            {clientReviews.map((rev) => (
-              <div
-                key={rev.id}
-                className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                      {rev.clientName.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{rev.clientName}</h4>
-                      <p className="text-[11px] text-slate-400">{rev.clientCompany}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className="w-3.5 h-3.5 fill-amber-500" />
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">{rev.date}</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed font-normal pt-1">
-                  &ldquo;{rev.comment}&rdquo;
-                </p>
-
-                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-semibold pt-1">
-                  <ThumbsUp className="w-3.5 h-3.5" />
-                  <span>Verified Purchase • Standard Consultation Contract</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: PERFORMANCE & METRICS */}
-      {activeTab === 'performance' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gross Platform Earnings</span>
-              <h3 className="text-2xl font-extrabold text-slate-800 mt-1">$53,420</h3>
-              <p className="text-xs text-emerald-600 font-semibold mt-1">+18% than last quarter</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Repeat Client Rate</span>
-              <h3 className="text-2xl font-extrabold text-slate-800 mt-1">42%</h3>
-              <p className="text-xs text-slate-500 font-medium mt-1">Industry avg: 28%</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Active In-Progress Orders</span>
-              <h3 className="text-2xl font-extrabold text-slate-800 mt-1">4 orders</h3>
-              <p className="text-xs text-purple-600 font-semibold mt-1">All milestones on schedule</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Order Completion Rate</span>
-              <h3 className="text-2xl font-extrabold text-slate-800 mt-1">99.2%</h3>
-              <p className="text-xs text-emerald-600 font-semibold mt-1">Top 1% of platform providers</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 4. Edit Profile Modal */}
       {isEditModalOpen && (

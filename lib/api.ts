@@ -475,6 +475,27 @@ export async function createOrder(gigId: string, packageId: string, requirements
   return data.data;
 }
 
+export async function createOrderCheckout(orderId: string): Promise<{ paymentUrl: string; sessionId: string; orderId: string; amount: number }> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to proceed to payment.');
+
+  const res = await fetch(`${API_BASE_URL}/payments/create-order-checkout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ orderId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create payment checkout session.');
+  }
+
+  return data.data;
+}
+
 export interface ICancellationReason {
   code: string;
   label: string;
@@ -1264,3 +1285,42 @@ export const reviewTicketAdmin = async (ticketId: string, action: 'APPROVE' | 'R
 
   return data;
 };
+
+export async function verifyPaymentSession(sessionId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/payments/verify/${sessionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to verify payment session.');
+  }
+
+  return data.data;
+}
+
+export async function updateOrderStatus(orderId: string, payload: { status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' }): Promise<IOrder> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Please sign in to update order status.');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to update order status.');
+  }
+
+  return data.data;
+}

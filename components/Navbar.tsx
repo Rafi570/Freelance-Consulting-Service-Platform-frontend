@@ -142,14 +142,16 @@ export default function Navbar() {
                       </Link>
                     )}
 
-                    <Link
-                      href="/orders"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#1dbf73] rounded-lg transition-colors"
-                    >
-                      <ShoppingBag className="w-4 h-4 text-slate-400" />
-                      <span>My Orders</span>
-                    </Link>
+                    {user.role === 'CLIENT' && (
+                      <Link
+                        href="/orders"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#1dbf73] rounded-lg transition-colors"
+                      >
+                        <ShoppingBag className="w-4 h-4 text-slate-400" />
+                        <span>My Orders</span>
+                      </Link>
+                    )}
 
                     {user.role === 'PROVIDER' && (
                       <>
@@ -330,7 +332,7 @@ export default function Navbar() {
               Find Consultants
             </Link>
 
-            {user && (
+            {user?.role === 'CLIENT' && (
               <Link
                 href="/orders"
                 onClick={() => setMobileOpen(false)}

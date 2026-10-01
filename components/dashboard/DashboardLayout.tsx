@@ -113,7 +113,6 @@ export default function DashboardLayout({
   if (user.status === 'BLOCKED') {
     return <BlockedProviderSupport />;
   }
-
   // 4. Client Role Guard (Clients do not have a dashboard)
   if (user.role === 'CLIENT') {
     return (

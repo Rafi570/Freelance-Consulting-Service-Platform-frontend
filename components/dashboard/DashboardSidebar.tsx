@@ -70,6 +70,7 @@ export default function DashboardSidebar({
     if (role === 'SUPER_ADMIN') {
       return [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'Manage Orders', href: '/dashboard/orders', icon: ShoppingBag },
         { label: 'Users & Roles', href: '/dashboard/users', icon: Users },
         { label: 'Manage Gigs', href: '/dashboard/gigs', icon: Briefcase },
         { label: 'Gig Filters', href: '/dashboard/filters', icon: SlidersHorizontal },
@@ -77,9 +78,19 @@ export default function DashboardSidebar({
       ];
     }
 
+    if (role === 'CLIENT') {
+      return [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'My Orders', href: '/dashboard/orders', icon: ShoppingBag },
+        { label: 'Explore Gigs', href: '/gigs', icon: Table },
+        { label: 'Support Center', href: '/dashboard/support', icon: MessageSquare, badge: notificationCount },
+      ];
+    }
+
     // Default: PROVIDER
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Orders', href: '/dashboard/orders', icon: ShoppingBag },
       { label: 'My Gigs', href: '/dashboard/gigs', icon: Briefcase },
       { label: 'Explore Gigs', href: '/gigs', icon: Table },
       { label: 'Support Center', href: '/dashboard/support', icon: MessageSquare, badge: notificationCount },

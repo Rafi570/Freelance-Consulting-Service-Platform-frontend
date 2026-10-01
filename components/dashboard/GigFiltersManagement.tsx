@@ -262,7 +262,7 @@ export default function GigFiltersManagement() {
   const tagCount = filters.filter((f) => f.type === 'TAG').length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div>
@@ -417,7 +417,19 @@ export default function GigFiltersManagement() {
       </div>
 
       {/* Filters Table */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="font-extrabold text-slate-800 text-sm">All Platform Filters</h3>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+              {filters.length} filters
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Page 1 of 1
+          </span>
+        </div>
+
         {isLoading ? (
           <div className="p-12 text-center flex flex-col items-center gap-3">
             <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
@@ -441,7 +453,7 @@ export default function GigFiltersManagement() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
               <span>Create First Filter</span>
@@ -449,35 +461,35 @@ export default function GigFiltersManagement() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-4 px-6">Filter Name &amp; Icon</th>
-                  <th className="py-4 px-4">Type</th>
-                  <th className="py-4 px-4">Description</th>
-                  <th className="py-4 px-4 text-center">Live Gigs</th>
-                  <th className="py-4 px-4 text-center">Status</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-5">FILTER NAME & ICON</th>
+                  <th className="py-3.5 px-4">TYPE</th>
+                  <th className="py-3.5 px-4">DESCRIPTION</th>
+                  <th className="py-3.5 px-4 text-center">LIVE GIGS</th>
+                  <th className="py-3.5 px-4 text-center">STATUS</th>
+                  <th className="py-3.5 px-5 text-right">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100">
                 {filters.map((filter) => (
                   <tr
                     key={filter.id}
-                    className="hover:bg-slate-50/60 transition-colors group"
+                    className="hover:bg-slate-50/70 transition-colors group"
                   >
                     {/* Name & Icon */}
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-xl bg-slate-100 text-base flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                           {filter.icon || '💻'}
-                        </span>
+                        </div>
                         <div>
-                          <p className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                          <p className="font-bold text-slate-800 text-xs block group-hover:text-purple-700 transition-colors">
                             {filter.name}
                           </p>
                           {filter.label && filter.label !== filter.name && (
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                               Display: {filter.label}
                             </p>
                           )}
@@ -488,13 +500,12 @@ export default function GigFiltersManagement() {
                     {/* Type Badge */}
                     <td className="py-4 px-4">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          filter.type === 'CATEGORY'
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${filter.type === 'CATEGORY'
                             ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
                             : filter.type === 'TAG'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                            : 'bg-purple-50 text-purple-700 border border-purple-200/60'
-                        }`}
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                              : 'bg-purple-50 text-purple-700 border border-purple-200/60'
+                          }`}
                       >
                         {filter.type === 'CATEGORY' ? (
                           <Layers className="w-3 h-3" />
@@ -515,11 +526,10 @@ export default function GigFiltersManagement() {
                     {/* Live Gigs Count */}
                     <td className="py-4 px-4 text-center">
                       <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-xs ${
-                          (filter.gigCount || 0) > 0
+                        className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-xs ${(filter.gigCount || 0) > 0
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-100 text-slate-500'
-                        }`}
+                          }`}
                       >
                         {filter.gigCount ?? 0}
                       </span>
@@ -530,30 +540,28 @@ export default function GigFiltersManagement() {
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(filter)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                          filter.isActive
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${filter.isActive
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            filter.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
-                          }`}
+                          className={`w-2 h-2 rounded-full ${filter.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                            }`}
                         />
                         <span>{filter.isActive ? 'Active' : 'Inactive'}</span>
                       </button>
                     </td>
 
                     {/* Action Buttons */}
-                    <td className="py-4 px-6 text-right">
-                      <div className="inline-flex items-center gap-1.5">
+                    <td className="py-4 px-5 text-right relative">
+                      <div className="flex items-center justify-end gap-2">
                         {/* View in marketplace link */}
                         <Link
                           href={`/gigs?${filter.type === 'TAG' ? 'tag' : 'category'}=${encodeURIComponent(filter.name)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer"
                           title="View Live Gigs with this Filter"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -563,20 +571,22 @@ export default function GigFiltersManagement() {
                         <button
                           type="button"
                           onClick={() => openEditModal(filter)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-2xs hover:shadow-xs cursor-pointer"
                           title="Edit Filter"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
                         </button>
 
                         {/* Delete Button */}
                         <button
                           type="button"
                           onClick={() => setDeletingFilter(filter)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs transition-all shadow-2xs hover:shadow-xs cursor-pointer"
                           title="Delete Filter"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>
@@ -638,11 +648,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setCreateForm({ ...createForm, type: 'CATEGORY' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    createForm.type === 'CATEGORY'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${createForm.type === 'CATEGORY'
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Layers className="w-4 h-4 mx-auto mb-1 text-emerald-600" />
                   <span className="text-[11px] block">Category</span>
@@ -651,11 +660,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setCreateForm({ ...createForm, type: 'TAG' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    createForm.type === 'TAG'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${createForm.type === 'TAG'
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Tag className="w-4 h-4 mx-auto mb-1 text-amber-600" />
                   <span className="text-[11px] block">Skill Tag</span>
@@ -664,11 +672,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setCreateForm({ ...createForm, type: 'FEATURED' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    createForm.type === 'FEATURED'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${createForm.type === 'FEATURED'
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Sparkles className="w-4 h-4 mx-auto mb-1 text-purple-600" />
                   <span className="text-[11px] block">Featured</span>
@@ -688,11 +695,10 @@ export default function GigFiltersManagement() {
                       onClick={() =>
                         setCreateForm({ ...createForm, icon: item.emoji })
                       }
-                      className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base transition-all cursor-pointer ${
-                        createForm.icon === item.emoji
+                      className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base transition-all cursor-pointer ${createForm.icon === item.emoji
                           ? 'border-emerald-500 bg-emerald-100 scale-110 shadow-sm'
                           : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                      }`}
+                        }`}
                       title={item.name}
                     >
                       {item.emoji}
@@ -810,11 +816,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setEditForm({ ...editForm, type: 'CATEGORY' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    editForm.type === 'CATEGORY'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${editForm.type === 'CATEGORY'
                       ? 'border-blue-500 bg-blue-50 text-blue-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Layers className="w-4 h-4 mx-auto mb-1 text-blue-600" />
                   <span className="text-[11px] block">Category</span>
@@ -823,11 +828,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setEditForm({ ...editForm, type: 'TAG' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    editForm.type === 'TAG'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${editForm.type === 'TAG'
                       ? 'border-blue-500 bg-blue-50 text-blue-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Tag className="w-4 h-4 mx-auto mb-1 text-amber-600" />
                   <span className="text-[11px] block">Skill Tag</span>
@@ -836,11 +840,10 @@ export default function GigFiltersManagement() {
                 <button
                   type="button"
                   onClick={() => setEditForm({ ...editForm, type: 'FEATURED' })}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    editForm.type === 'FEATURED'
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${editForm.type === 'FEATURED'
                       ? 'border-blue-500 bg-blue-50 text-blue-800 font-bold'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <Sparkles className="w-4 h-4 mx-auto mb-1 text-purple-600" />
                   <span className="text-[11px] block">Featured</span>
@@ -860,11 +863,10 @@ export default function GigFiltersManagement() {
                       onClick={() =>
                         setEditForm({ ...editForm, icon: item.emoji })
                       }
-                      className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base transition-all cursor-pointer ${
-                        editForm.icon === item.emoji
+                      className={`w-9 h-9 rounded-xl border flex items-center justify-center text-base transition-all cursor-pointer ${editForm.icon === item.emoji
                           ? 'border-blue-500 bg-blue-100 scale-110 shadow-sm'
                           : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {item.emoji}
                     </button>

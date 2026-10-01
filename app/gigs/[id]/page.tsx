@@ -9,6 +9,7 @@ import {
   getGigById,
   getGigReviews,
   createOrder,
+  createOrderCheckout,
   getMyOrders,
   submitOrderReview,
   IOrder,
@@ -227,10 +228,16 @@ export default function GigDetailsPage() {
     setOrderError(null);
 
     try {
-      await createOrder(gigId, activePackage.id, orderRequirements);
-      setOrderSuccess(true);
+      const createdOrder = await createOrder(gigId, activePackage.id, orderRequirements);
+      const checkoutSession = await createOrderCheckout(createdOrder.id);
+      
+      if (checkoutSession && checkoutSession.paymentUrl) {
+        window.location.href = checkoutSession.paymentUrl;
+      } else {
+        setOrderSuccess(true);
+      }
     } catch (err: any) {
-      setOrderError(err.message || 'Failed to place order.');
+      setOrderError(err.message || 'Failed to place order and initiate payment.');
     } finally {
       setOrderLoading(false);
     }
