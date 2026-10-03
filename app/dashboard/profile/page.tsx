@@ -54,12 +54,12 @@ export default function DashboardProfilePage() {
   const [formData, setFormData] = useState({
     name: authUser?.name || '',
     bio: authUser?.profile?.bio || '',
-    skills: authUser?.profile?.skills?.join(', ') || 'UI/UX Design, Strategy Consulting, Brand Identity, Full-Stack Architecture, Figma',
-    phone: authUser?.profile?.phone || '+1 (555) 234-8910',
-    address: authUser?.profile?.address || 'San Francisco, CA, USA',
-    experience: authUser?.profile?.experience || '6+ Years',
-    portfolioUrl: authUser?.profile?.portfolioUrl || 'https://consultant-portfolio.dev',
-    hourlyRate: authUser?.profile?.hourlyRate || 85,
+    skills: authUser?.profile?.skills?.join(', ') || '',
+    phone: authUser?.profile?.phone || '',
+    address: authUser?.profile?.address || '',
+    experience: authUser?.profile?.experience || '',
+    portfolioUrl: authUser?.profile?.portfolioUrl || '',
+    hourlyRate: authUser?.profile?.hourlyRate || 0,
   });
 
   // Sync profile data on mount
@@ -83,13 +83,13 @@ export default function DashboardProfilePage() {
           setProfileData(data);
           setFormData({
             name: data.name || '',
-            bio: data.profile?.bio || 'Senior Consulting Strategist & Full-Stack Architect with over 6 years of expertise delivering high-impact digital solutions, system design, and brand acceleration.',
-            skills: data.profile?.skills?.length ? data.profile.skills.join(', ') : 'UI/UX Design, Strategy Consulting, Brand Identity, Full-Stack Architecture, Figma',
-            phone: data.profile?.phone || '+1 (555) 234-8910',
-            address: data.profile?.address || 'San Francisco, CA, USA',
-            experience: data.profile?.experience || '6+ Years',
-            portfolioUrl: data.profile?.portfolioUrl || 'https://consultant-portfolio.dev',
-            hourlyRate: data.profile?.hourlyRate || 85,
+            bio: data.profile?.bio || '',
+            skills: data.profile?.skills?.length ? data.profile.skills.join(', ') : '',
+            phone: data.profile?.phone || '',
+            address: data.profile?.address || '',
+            experience: data.profile?.experience || '',
+            portfolioUrl: data.profile?.portfolioUrl || '',
+            hourlyRate: data.profile?.hourlyRate || 0,
           });
         }
       } catch (err) {
@@ -160,21 +160,21 @@ export default function DashboardProfilePage() {
     }
   };
 
-  const name = profileData?.name || authUser?.name || 'Hasan Rafi';
-  const email = profileData?.email || authUser?.email || 'hasanrafi570@gmail.com';
+  const name = profileData?.name || authUser?.name || 'User';
+  const email = profileData?.email || authUser?.email || '';
   const role = profileData?.role || authUser?.role || 'PROVIDER';
   const bio =
     profileData?.profile?.bio ||
     formData.bio ||
-    'Experienced consulting partner specializing in end-to-end digital transformation, technology strategy, UX engineering, and business advisory services.';
+    'No bio provided.';
   const skills = profileData?.profile?.skills?.length
     ? profileData.profile.skills
-    : formData.skills.split(',').map((s) => s.trim());
-  const hourlyRate = profileData?.profile?.hourlyRate ?? formData.hourlyRate ?? 85;
-  const experience = profileData?.profile?.experience || formData.experience || '6+ Years';
-  const phone = profileData?.profile?.phone || formData.phone || '+1 (555) 234-8910';
-  const address = profileData?.profile?.address || formData.address || 'San Francisco, CA, USA';
-  const portfolioUrl = profileData?.profile?.portfolioUrl || formData.portfolioUrl || 'https://consultant-portfolio.dev';
+    : formData.skills ? formData.skills.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const hourlyRate = profileData?.profile?.hourlyRate ?? formData.hourlyRate ?? 0;
+  const experience = profileData?.profile?.experience || formData.experience || 'Not specified';
+  const phone = profileData?.profile?.phone || formData.phone || 'Not specified';
+  const address = profileData?.profile?.address || formData.address || 'Not specified';
+  const portfolioUrl = profileData?.profile?.portfolioUrl || formData.portfolioUrl || '';
 
   // Fetched providerGigs are now stored in state
 
