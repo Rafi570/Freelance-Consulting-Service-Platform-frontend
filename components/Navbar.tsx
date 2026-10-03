@@ -78,27 +78,6 @@ export default function Navbar() {
               Explore Gigs
             </Link>
 
-            <Link
-              href="/providers"
-              className="hover:text-[#1dbf73] transition-colors"
-            >
-              Find Consultants
-            </Link>
-
-            {(!user || user.role === 'CLIENT') && (
-              <button
-                type="button"
-                onClick={() => openAuthModal('register')}
-                className="hover:text-[#1dbf73] transition-colors cursor-pointer"
-              >
-                Become a Provider
-              </button>
-            )}
-
-            <div className="flex items-center gap-1 text-slate-500 hover:text-slate-800 cursor-pointer">
-              <Globe className="w-4 h-4" />
-              <span>English</span>
-            </div>
 
             {/* If Authenticated: User Menu */}
             {user ? (
@@ -152,47 +131,6 @@ export default function Navbar() {
                         <span>My Orders</span>
                       </Link>
                     )}
-
-                    {user.role === 'PROVIDER' && (
-                      <>
-                        <Link
-                          href="/gigs/my-gigs"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#1dbf73] rounded-lg transition-colors"
-                        >
-                          <Briefcase className="w-4 h-4 text-slate-400" />
-                          <span>My Gigs</span>
-                        </Link>
-                        <Link
-                          href="/gigs/create"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#1dbf73] rounded-lg transition-colors"
-                        >
-                          <PlusCircle className="w-4 h-4 text-slate-400" />
-                          <span>Create New Gig</span>
-                        </Link>
-                      </>
-                    )}
-
-                    {user.role === 'SUPER_ADMIN' && (
-                      <Link
-                        href="/admin/users"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
-                      >
-                        <ShieldCheck className="w-4 h-4 text-purple-600" />
-                        <span>Admin Console</span>
-                      </Link>
-                    )}
-
-                    <Link
-                      href="/support"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#1dbf73] rounded-lg transition-colors"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-slate-400" />
-                      <span>Support &amp; Appeals</span>
-                    </Link>
 
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
@@ -324,13 +262,6 @@ export default function Navbar() {
             >
               Explore All Gigs
             </Link>
-            <Link
-              href="/providers"
-              onClick={() => setMobileOpen(false)}
-              className="py-1 hover:text-[#1dbf73]"
-            >
-              Find Consultants
-            </Link>
 
             {user?.role === 'CLIENT' && (
               <Link
@@ -341,24 +272,6 @@ export default function Navbar() {
                 My Orders
               </Link>
             )}
-
-            {user?.role === 'PROVIDER' && (
-              <Link
-                href="/gigs/my-gigs"
-                onClick={() => setMobileOpen(false)}
-                className="py-1 hover:text-[#1dbf73]"
-              >
-                My Gigs
-              </Link>
-            )}
-
-            <Link
-              href="/support"
-              onClick={() => setMobileOpen(false)}
-              className="py-1 hover:text-[#1dbf73]"
-            >
-              Support &amp; Appeals
-            </Link>
           </div>
 
           {/* Dynamic Categories Section in Mobile Drawer */}
