@@ -8,23 +8,31 @@ import {
   CreditCard,
   KeyRound,
   ArrowUp,
-  LucideIcon
+  LucideIcon,
+  CheckCircle2
 } from 'lucide-react';
 
 interface TimelineItem {
   id: string;
   title: string;
   time: string;
-  icon: LucideIcon;
-  iconColor: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  status?: string;
 }
 
 interface OrdersOverviewProps {
   role?: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT';
+  timeline?: Array<{
+    id: string;
+    title: string;
+    time: string;
+    status: string;
+  }>;
 }
 
-export default function OrdersOverview({ role = 'PROVIDER' }: OrdersOverviewProps) {
-  const items: TimelineItem[] = [
+export default function OrdersOverview({ role = 'PROVIDER', timeline }: OrdersOverviewProps) {
+  const defaultItems: TimelineItem[] = [
     {
       id: '1',
       title: '$2400, Design changes',
@@ -53,17 +61,30 @@ export default function OrdersOverview({ role = 'PROVIDER' }: OrdersOverviewProp
       icon: CreditCard,
       iconColor: 'text-amber-500',
     },
-    {
-      id: '5',
-      title: 'Unlock packages for development',
-      time: '18 DEC 4:54 AM',
-      icon: KeyRound,
-      iconColor: 'text-purple-500',
-    },
   ];
 
+  const displayItems = timeline && timeline.length > 0 ? timeline : defaultItems;
+
+  const getIcon = (status?: string) => {
+    switch (status) {
+      case 'COMPLETED': return { Icon: CheckCircle2, color: 'text-emerald-500' };
+      case 'IN_PROGRESS': return { Icon: Code2, color: 'text-blue-500' };
+      case 'CANCELLED': return { Icon: Bell, color: 'text-rose-500' };
+      default: return { Icon: ShoppingCart, color: 'text-amber-500' };
+    }
+  };
+
+  const formatTime = (timeStr: string) => {
+    try {
+      const d = new Date(timeStr);
+      return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: 'numeric' });
+    } catch {
+      return timeStr;
+    }
+  };
+
   const title = role === 'SUPER_ADMIN' ? 'Platform Activity' : role === 'CLIENT' ? 'Order Updates' : 'Orders overview';
-  const subtitle = '24% this month';
+  const subtitle = 'Recent activity updates';
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
@@ -84,15 +105,16 @@ export default function OrdersOverview({ role = 'PROVIDER' }: OrdersOverviewProp
         <div className="absolute left-[13px] top-3 bottom-6 w-[2px] bg-slate-100" />
 
         <div className="space-y-5">
-          {items.map((item, idx) => {
-            const Icon = item.icon;
-            const isLast = idx === items.length - 1;
+          {displayItems.map((itemObj, idx) => {
+            const item = itemObj as TimelineItem;
+            const { Icon, color } = item.icon && item.iconColor ? { Icon: item.icon, color: item.iconColor } : getIcon(item.status);
+            const isLast = idx === displayItems.length - 1;
 
             return (
               <div key={item.id} className="relative flex items-start gap-3.5 group">
                 {/* Icon marker */}
                 <div className="z-10 bg-white ring-4 ring-white rounded-full p-0.5">
-                  <Icon className={`w-5 h-5 ${item.iconColor} stroke-[2.2]`} />
+                  <Icon className={`w-5 h-5 ${color} stroke-[2.2]`} />
                 </div>
 
                 {/* Content */}
@@ -101,7 +123,7 @@ export default function OrdersOverview({ role = 'PROVIDER' }: OrdersOverviewProp
                     {item.title}
                   </p>
                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                    {item.time}
+                    {item.time.includes('DEC') ? item.time : formatTime(item.time)}
                   </p>
                 </div>
               </div>

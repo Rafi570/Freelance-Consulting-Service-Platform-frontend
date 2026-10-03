@@ -7,20 +7,22 @@ interface ProjectItem {
   id: string;
   name: string;
   category: string;
-  iconBg: string;
+  iconBg?: string;
   iconLetter: string;
-  members: string[];
-  budget: string;
+  members?: string[];
+  budget: number | string;
   completion: number;
-  barColor: string;
+  barColor?: string;
+  status?: string;
 }
 
 interface ProjectsTableProps {
   role?: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT';
+  projects?: ProjectItem[];
 }
 
-export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps) {
-  const projects: ProjectItem[] = [
+export default function ProjectsTable({ role = 'PROVIDER', projects }: ProjectsTableProps) {
+  const defaultProjects: ProjectItem[] = [
     {
       id: '1',
       name: 'Material XD Version',
@@ -43,43 +45,22 @@ export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps)
       completion: 10,
       barColor: 'bg-blue-400',
     },
-    {
-      id: '3',
-      name: 'Fix Platform Errors',
-      category: 'Bug Fix & DevOps',
-      iconBg: 'bg-amber-500',
-      iconLetter: 'Sl',
-      members: ['/avatars/1.jpg', '/avatars/3.jpg'],
-      budget: 'Not set',
-      completion: 100,
-      barColor: 'bg-emerald-500',
-    },
-    {
-      id: '4',
-      name: 'Spotify App Redesign',
-      category: 'Brand & Mobile App',
-      iconBg: 'bg-emerald-600',
-      iconLetter: 'Sp',
-      members: ['/avatars/3.jpg', '/avatars/4.jpg', '/avatars/1.jpg'],
-      budget: '$20,500',
-      completion: 100,
-      barColor: 'bg-emerald-500',
-    },
-    {
-      id: '5',
-      name: 'Consulting Pricing Model',
-      category: 'Business Strategy',
-      iconBg: 'bg-indigo-600',
-      iconLetter: 'In',
-      members: ['/avatars/2.jpg'],
-      budget: '$500',
-      completion: 25,
-      barColor: 'bg-rose-500',
-    },
   ];
 
-  const title = role === 'SUPER_ADMIN' ? 'Platform Contracts' : role === 'CLIENT' ? 'Active Orders' : 'Projects';
-  const subtitle = role === 'SUPER_ADMIN' ? '124 active contracts' : role === 'CLIENT' ? '5 ongoing deliverables' : '30 done this month';
+  const displayProjects = projects && projects.length > 0 ? projects : defaultProjects;
+
+  const getColor = (index: number) => {
+    const colors = ['bg-rose-500', 'bg-blue-600', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-500'];
+    return colors[index % colors.length];
+  };
+
+  const getBarColor = (index: number) => {
+    const colors = ['bg-blue-500', 'bg-blue-400', 'bg-emerald-500', 'bg-emerald-400', 'bg-rose-500'];
+    return colors[index % colors.length];
+  };
+
+  const title = role === 'SUPER_ADMIN' ? 'Platform Contracts' : role === 'CLIENT' ? 'Active Orders' : 'Recent Orders';
+  const subtitle = role === 'SUPER_ADMIN' ? 'active platform orders' : role === 'CLIENT' ? 'ongoing deliverables' : 'recent transactions';
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
@@ -115,12 +96,12 @@ export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps)
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
-            {projects.map((project) => (
+            {displayProjects.map((project, idx) => (
               <tr key={project.id} className="hover:bg-slate-50/60 transition-colors">
                 {/* Project Company */}
                 <td className="py-3.5 pr-4 flex items-center gap-3">
                   <div
-                    className={`w-9 h-9 rounded-xl ${project.iconBg} text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0`}
+                    className={`w-9 h-9 rounded-xl ${project.iconBg || getColor(idx)} text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0`}
                   >
                     {project.iconLetter}
                   </div>
@@ -137,7 +118,7 @@ export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps)
                 {/* Members overlapping */}
                 <td className="py-3.5 px-4">
                   <div className="flex -space-x-2 overflow-hidden">
-                    {project.members.map((_, i) => {
+                    {(project.members || ['1']).map((_, i) => {
                       const colors = [
                         'bg-slate-700 text-slate-100',
                         'bg-emerald-600 text-white',
@@ -158,7 +139,7 @@ export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps)
 
                 {/* Budget */}
                 <td className="py-3.5 px-4 font-semibold text-slate-700">
-                  {project.budget}
+                  {typeof project.budget === 'number' ? `$${project.budget.toLocaleString()}` : project.budget}
                 </td>
 
                 {/* Completion Progress Bar */}
@@ -170,7 +151,7 @@ export default function ProjectsTable({ role = 'PROVIDER' }: ProjectsTableProps)
                     <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                       <div
                         style={{ width: `${project.completion}%` }}
-                        className={`h-full ${project.barColor} rounded-full`}
+                        className={`h-full ${project.barColor || getBarColor(idx)} rounded-full`}
                       />
                     </div>
                   </div>

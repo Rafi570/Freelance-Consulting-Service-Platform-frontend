@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import StatCard from '@/components/dashboard/StatCard';
 import ChartsSection from '@/components/dashboard/ChartsSection';
 import ProjectsTable from '@/components/dashboard/ProjectsTable';
 import OrdersOverview from '@/components/dashboard/OrdersOverview';
+import { getDashboardStats, IDashboardStats } from '@/lib/api';
 import {
   Wallet,
   Users,
@@ -17,7 +18,8 @@ import {
   TrendingUp,
   Bookmark,
   Landmark,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -25,40 +27,71 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ role = 'PROVIDER' }: DashboardPageProps) {
+  const [statsData, setStatsData] = useState<IDashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await getDashboardStats();
+        setStatsData(data);
+      } catch (error) {
+        console.error('Failed to fetch dashboard stats', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const formatCurrency = (val: number) => {
+    if (val >= 1000) {
+      return `$${(val / 1000).toFixed(1)}k`;
+    }
+    return `$${val}`;
+  };
+
+  const formatNumber = (val: number) => {
+    if (val >= 1000) {
+      return `${(val / 1000).toFixed(1)}k`;
+    }
+    return val.toString();
+  };
+
   // Stat cards configurations tailored to the selected role
   const getStatCards = () => {
     if (role === 'SUPER_ADMIN') {
       return [
         {
           title: "Today's Money",
-          value: "$53k",
-          change: "+55%",
+          value: statsData ? formatCurrency(statsData.stats.stat1) : "...",
+          change: "Today",
           isPositive: true,
-          timeframe: "than last week",
+          timeframe: "total revenue",
           icon: Landmark,
         },
         {
-          title: "Today's Users",
-          value: "2300",
-          change: "+3%",
+          title: "Total Users",
+          value: statsData ? formatNumber(statsData.stats.stat2) : "...",
+          change: "Overall",
           isPositive: true,
-          timeframe: "than last month",
+          timeframe: "registered users",
           icon: Users,
         },
         {
-          title: "Ads Views",
-          value: "3,462",
-          change: "-2%",
-          isPositive: false,
-          timeframe: "than yesterday",
+          title: "Active Gigs",
+          value: statsData ? formatNumber(statsData.stats.stat3) : "...",
+          change: "Currently",
+          isPositive: true,
+          timeframe: "published services",
           icon: Eye,
         },
         {
-          title: "Sales",
-          value: "$103,430",
-          change: "+5%",
+          title: "Sales (Revenue)",
+          value: statsData ? formatCurrency(statsData.stats.stat4) : "...",
+          change: "Lifetime",
           isPositive: true,
-          timeframe: "than yesterday",
+          timeframe: "total platform sales",
           icon: ShoppingBag,
         },
       ];
@@ -68,34 +101,34 @@ export default function DashboardPage({ role = 'PROVIDER' }: DashboardPageProps)
       return [
         {
           title: "Total Spent",
-          value: "$4,850",
-          change: "+12%",
+          value: statsData ? formatCurrency(statsData.stats.stat1) : "...",
+          change: "Lifetime",
           isPositive: true,
-          timeframe: "than last month",
+          timeframe: "investment",
           icon: CreditCard,
         },
         {
           title: "Active Orders",
-          value: "3",
-          change: "1 arriving",
+          value: statsData ? formatNumber(statsData.stats.stat2) : "...",
+          change: "Currently",
           isPositive: true,
-          timeframe: "today",
+          timeframe: "in progress",
           icon: ShoppingBag,
         },
         {
-          title: "Saved Experts",
-          value: "24",
-          change: "+4 new",
+          title: "Total Orders",
+          value: statsData ? formatNumber(statsData.stats.stat3) : "...",
+          change: "Lifetime",
           isPositive: true,
-          timeframe: "this week",
+          timeframe: "purchases made",
           icon: Bookmark,
         },
         {
           title: "Completed Projects",
-          value: "18",
-          change: "100%",
+          value: statsData ? formatNumber(statsData.stats.stat4) : "...",
+          change: "Successfully",
           isPositive: true,
-          timeframe: "satisfaction",
+          timeframe: "delivered",
           icon: CheckCircle2,
         },
       ];
@@ -104,35 +137,35 @@ export default function DashboardPage({ role = 'PROVIDER' }: DashboardPageProps)
     // Default: PROVIDER (matches exactly the values and labels from the user screenshot!)
     return [
       {
-        title: "Today's Money",
-        value: "$53k",
-        change: "+55%",
+        title: "Today's Earnings",
+        value: statsData ? formatCurrency(statsData.stats.stat1) : "...",
+        change: "Today",
         isPositive: true,
-        timeframe: "than last week",
+        timeframe: "revenue generated",
         icon: Wallet,
       },
       {
-        title: "Today's Users",
-        value: "2300",
-        change: "+3%",
+        title: "Unique Clients",
+        value: statsData ? formatNumber(statsData.stats.stat2) : "...",
+        change: "Lifetime",
         isPositive: true,
-        timeframe: "than last month",
+        timeframe: "buyers",
         icon: Users,
       },
       {
-        title: "Ads Views",
-        value: "3,462",
-        change: "-2%",
-        isPositive: false,
-        timeframe: "than yesterday",
+        title: "Total Gigs",
+        value: statsData ? formatNumber(statsData.stats.stat3) : "...",
+        change: "Created",
+        isPositive: true,
+        timeframe: "services offered",
         icon: Eye,
       },
       {
-        title: "Sales",
-        value: "$103,430",
-        change: "+5%",
+        title: "Total Sales",
+        value: statsData ? formatCurrency(statsData.stats.stat4) : "...",
+        change: "Lifetime",
         isPositive: true,
-        timeframe: "than yesterday",
+        timeframe: "revenue",
         icon: ShoppingBag,
       },
     ];
@@ -188,18 +221,18 @@ export default function DashboardPage({ role = 'PROVIDER' }: DashboardPageProps)
       </div>
 
       {/* 2. Middle Row: 3 Chart Cards (Website Views, Daily Sales, Completed Tasks) */}
-      <ChartsSection role={role} />
+      <ChartsSection role={role} barChartData={statsData?.barChart} />
 
       {/* 3. Bottom Row: Projects Table + Orders Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left wider card: Projects Table */}
         <div className="lg:col-span-2">
-          <ProjectsTable role={role} />
+          <ProjectsTable role={role} projects={statsData?.projects} />
         </div>
 
         {/* Right card: Orders Overview Timeline */}
         <div className="lg:col-span-1">
-          <OrdersOverview role={role} />
+          <OrdersOverview role={role} timeline={statsData?.timeline} />
         </div>
       </div>
     </div>

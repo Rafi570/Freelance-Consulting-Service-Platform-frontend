@@ -496,6 +496,25 @@ export async function createOrderCheckout(orderId: string): Promise<{ paymentUrl
   return data.data;
 }
 
+export async function createSubscriptionCheckout(): Promise<{ paymentUrl: string; sessionId: string; amount: number }> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Please sign in to proceed to payment.');
+
+  const res = await fetch(`${API_BASE_URL}/payments/create-subscription-checkout`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create subscription checkout session.');
+  }
+
+  return data.data;
+}
+
 export interface ICancellationReason {
   code: string;
   label: string;
@@ -1364,5 +1383,43 @@ export async function updateOrderStatus(orderId: string, payload: { status: 'IN_
     throw new Error(data.message || 'Failed to update order status.');
   }
 
+  return data.data;
+}
+
+export interface IDashboardStats {
+  stats: {
+    stat1: number;
+    stat2: number;
+    stat3: number;
+    stat4: number;
+  };
+  barChart: Array<{ day: string; height: number }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    category: string;
+    iconLetter: string;
+    budget: number;
+    completion: number;
+    status: string;
+  }>;
+  timeline: Array<{
+    id: string;
+    title: string;
+    time: string;
+    status: string;
+  }>;
+}
+
+export async function getDashboardStats(): Promise<IDashboardStats> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to fetch dashboard stats.');
+  }
   return data.data;
 }

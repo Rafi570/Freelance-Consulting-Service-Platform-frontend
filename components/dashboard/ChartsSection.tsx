@@ -5,13 +5,14 @@ import { Clock } from 'lucide-react';
 
 interface ChartsSectionProps {
   role?: 'PROVIDER' | 'SUPER_ADMIN' | 'CLIENT';
+  barChartData?: Array<{ day: string; height: number }>;
 }
 
-export default function ChartsSection({ role = 'PROVIDER' }: ChartsSectionProps) {
+export default function ChartsSection({ role = 'PROVIDER', barChartData }: ChartsSectionProps) {
   // Configurable labels based on role
-  const chart1Title = role === 'SUPER_ADMIN' ? 'Platform Traffic' : role === 'CLIENT' ? 'Consultation Hours' : 'Website Views';
-  const chart1Subtitle = 'Last Campaign Performance';
-  const chart1Footer = 'campaign sent 2 days ago';
+  const chart1Title = role === 'SUPER_ADMIN' ? 'Platform Traffic' : role === 'CLIENT' ? 'Consultation Hours' : 'New Orders (7d)';
+  const chart1Subtitle = 'Last 7 Days Performance';
+  const chart1Footer = 'updated recently';
 
   const chart2Title = role === 'SUPER_ADMIN' ? 'Gross Platform Volume' : role === 'CLIENT' ? 'Monthly Spend' : 'Daily Sales';
   const chart2Subtitle = '(+15%) increase in today sales.';
@@ -21,8 +22,8 @@ export default function ChartsSection({ role = 'PROVIDER' }: ChartsSectionProps)
   const chart3Subtitle = 'Last Campaign Performance';
   const chart3Footer = 'just updated';
 
-  // Bar chart data: M, T, W, T, F, S, S
-  const barData = [
+  // Bar chart data: dynamic from backend or fallback
+  const barData = barChartData || [
     { day: 'M', height: 50 },
     { day: 'T', height: 45 },
     { day: 'W', height: 22 },

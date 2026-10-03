@@ -51,6 +51,7 @@ import {
   deleteGig,
   getGigFilters,
   uploadGigImages,
+  createSubscriptionCheckout,
   IGigFilter
 } from '@/lib/api';
 
@@ -165,9 +166,9 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     remainingFreeGigs: string | number;
   }>({
     isSubscribed: false,
-    gigLimit: 4,
+    gigLimit: 3,
     totalCreated: 0,
-    remainingFreeGigs: 4,
+    remainingFreeGigs: 3,
   });
 
   const [categories, setCategories] = useState<string[]>([]);
@@ -684,6 +685,17 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
     setActiveGalleryIndex(0);
   };
 
+  const handleUpgrade = async () => {
+    try {
+      const res = await createSubscriptionCheckout();
+      if (res?.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to initialize payment.');
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       {/* 1. Header Banner */}
@@ -708,16 +720,40 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {!isSuperAdmin && (
+              <button
+                type="button"
+                onClick={handleUpgrade}
+                disabled={quotaInfo.isSubscribed || quotaInfo.totalCreated < 3}
+                className={`px-5 py-3 rounded-2xl ${
+                  quotaInfo.isSubscribed
+                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600'
+                    : quotaInfo.totalCreated < 3
+                    ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed border border-slate-600/50'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-lg shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98]'
+                } text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2`}
+              >
+                <Crown className="w-4 h-4 stroke-[3]" />
+                <span>{quotaInfo.isSubscribed ? 'Premium Active' : 'Get Premium'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
+                if (!isSuperAdmin && !quotaInfo.isSubscribed && quotaInfo.totalCreated >= 3) return;
                 setFormData((prev) => ({
                   ...prev,
                   category: categories.length > 0 ? categories[0] : '',
                 }));
                 setIsCreateModalOpen(true);
               }}
-              className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              disabled={!isSuperAdmin && !quotaInfo.isSubscribed && quotaInfo.totalCreated >= 3}
+              className={`px-5 py-3 rounded-2xl ${
+                !isSuperAdmin && !quotaInfo.isSubscribed && quotaInfo.totalCreated >= 3
+                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow-lg shadow-emerald-500/25 hover:scale-[1.02] active:scale-[0.98]'
+              } text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2`}
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>Create New Gig</span>
@@ -752,7 +788,7 @@ export default function GigsManagement({ role = 'PROVIDER' }: GigsManagementProp
             <div className="text-[11px] font-medium text-slate-400">Account Tier</div>
             <div className="text-sm font-extrabold text-amber-300 mt-1 flex items-center gap-1.5">
               <Crown className="w-3.5 h-3.5" />
-              <span>{isSuperAdmin ? 'Admin Unlimited' : quotaInfo.isSubscribed ? 'Pro Subscriber' : `${quotaInfo.totalCreated} / 4 Free Gigs`}</span>
+              <span>{isSuperAdmin ? 'Admin Unlimited' : quotaInfo.isSubscribed ? 'Pro Subscriber' : `${quotaInfo.totalCreated} / 3 Free Gigs`}</span>
             </div>
           </div>
         </div>

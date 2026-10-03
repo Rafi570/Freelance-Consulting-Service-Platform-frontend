@@ -487,7 +487,7 @@ export default function GigDetailsPage() {
             {/* C. INTERACTIVE WORK DEMO GALLERY ("bam side e nijer kajer demo") */}
             <section aria-label="Work Demo Showcase" className="space-y-3">
               {/* Main Showcase Viewport */}
-              <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-slate-900 shadow-md group">
+              <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-900 group border border-[#e4e5e7]">
                 <img
                   src={galleryImages[activeImageIndex]}
                   alt={`Portfolio demo ${activeImageIndex + 1}`}
@@ -549,7 +549,7 @@ export default function GigDetailsPage() {
                       key={idx}
                       type="button"
                       onClick={() => setActiveImageIndex(idx)}
-                      className={`relative w-24 sm:w-28 aspect-[16/10] rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                      className={`relative w-24 sm:w-28 aspect-[16/10] overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                         activeImageIndex === idx
                           ? 'border-[#1dbf73] ring-2 ring-[#1dbf73]/30 scale-102'
                           : 'border-transparent opacity-65 hover:opacity-100'
@@ -567,7 +567,7 @@ export default function GigDetailsPage() {
             </section>
 
             {/* D. WHAT PEOPLE LOVED ABOUT THIS SELLER (Fiverr Callout) */}
-            <div className="p-5 rounded-2xl bg-[#fafafa] border border-[#e4e5e7] flex items-start gap-4">
+            <div className="p-5 bg-[#fafafa] border border-[#e4e5e7] flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-emerald-100 text-[#1dbf73] flex items-center justify-center shrink-0 font-bold">
                 <ThumbsUp className="w-5 h-5" />
               </div>
@@ -597,7 +597,7 @@ export default function GigDetailsPage() {
                   {gig.description}
                 </p>
 
-                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="p-5 bg-slate-50 border border-slate-200/80 space-y-3">
                   <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-[#1dbf73]" />
                     <span>Included in this professional service:</span>
@@ -673,7 +673,7 @@ export default function GigDetailsPage() {
                 About the seller
               </h2>
 
-              <div className="p-6 rounded-2xl bg-white border border-[#e4e5e7] shadow-xs space-y-6">
+              <div className="p-6 bg-white border border-[#e4e5e7] space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="relative">
@@ -751,7 +751,7 @@ export default function GigDetailsPage() {
                 Compare packages
               </h2>
 
-              <div className="border border-[#e4e5e7] rounded-2xl overflow-hidden shadow-xs">
+              <div className="border border-[#e4e5e7] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[600px]">
                     <thead>
@@ -1279,7 +1279,7 @@ export default function GigDetailsPage() {
                   return filtered.map((rev, idx) => (
                     <article
                       key={rev.id || idx}
-                      className="p-5 sm:p-6 rounded-2xl bg-white border border-[#e4e5e7] shadow-2xs hover:shadow-xs transition-shadow space-y-3.5"
+                      className="p-5 sm:p-6 bg-white border border-[#e4e5e7] space-y-3.5"
                     >
                       {/* Reviewer Header */}
                       <div className="flex items-start justify-between gap-3">
@@ -1363,7 +1363,7 @@ export default function GigDetailsPage() {
           {/* RIGHT COLUMN: STICKY FIVERR PRICING SIDEBAR ("packer taka") */}
           {/* ========================================================= */}
           <div className="lg:col-span-4 sticky top-24 self-start">
-            <div className="bg-white rounded-2xl border border-[#e4e5e7] shadow-xl overflow-hidden">
+            <div className="bg-white border border-[#e4e5e7] overflow-hidden">
 
               {/* A. 3-TIER TABS (Fiverr Exact Styling) */}
               <div className="grid grid-cols-3 bg-[#fafafa] border-b border-[#e4e5e7] text-xs font-bold text-[#74767e]">
