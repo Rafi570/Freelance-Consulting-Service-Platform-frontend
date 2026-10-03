@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ConsulSphere - Freelance Consulting Service Platform
 
-## Getting Started
+A modern, full-stack Freelance and Consulting Service Platform built with Next.js, React, Tailwind CSS, and TypeScript. This platform connects clients with expert consultants for professional services, featuring real-time gig browsing, booking, payment processing (Stripe), and a comprehensive provider/admin dashboard.
 
-First, run the development server:
+## 🚀 Live Demo
+- **Frontend URL:** [https://freelance-platform-frontend-iota.vercel.app](https://freelance-platform-frontend-iota.vercel.app)
+- **Backend API:** [https://freelance-consulting-service-platfo.vercel.app](https://freelance-consulting-service-platfo.vercel.app)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🛠️ Technology Stack
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Authentication:** JWT, Google OAuth (Google Identity Services)
+- **State Management:** React Context API
+- **Icons:** Lucide React
+- **Payments:** Stripe Checkout
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Key Features
+- **User Authentication:** JWT-based login/registration and one-tap Google OAuth integration.
+- **Role-Based Access Control:** Separate dashboards and permissions for `CLIENT`, `PROVIDER`, and `SUPER_ADMIN`.
+- **Dynamic Dashboards:** Real-time MRR charts, gig statistics, recent orders, and provider tracking.
+- **Gig Marketplace:** Browse, filter, and search professional consulting gigs.
+- **Secure Payments:** Integrated Stripe checkout for smooth and secure order processing.
+- **Profile Management:** Dynamic provider profiles to display skills, hourly rates, and bio.
+- **Responsive Design:** Fully mobile-responsive interface optimized for all screen sizes.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📦 Local Installation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Rafi570/Freelance-Consulting-Service-Platform-frontend.git
+   cd Freelance-Consulting-Service-Platform-frontend
+   ```
 
-## Learn More
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+3. **Set up environment variables**
+   Create a `.env` file in the root directory and add the following variables:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_key
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Deployment
+This project is optimized for deployment on **Vercel**. Environment variables must be configured in the Vercel dashboard prior to deployment.
