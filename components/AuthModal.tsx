@@ -282,38 +282,6 @@ export default function AuthModal({
           {/* TAB 1: SIGN IN FORM */}
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {/* 1-Click Quick Demo Accounts (Fiverr style test bar) */}
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-[#1dbf73]" />
-                    <span>Quick 1-Click Demo Login</span>
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleDemoFill('hasanrafi570@gmail.com', 'Rafi570@')}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:border-[#1dbf73] hover:text-[#1dbf73] font-bold text-[11px] transition-colors shadow-2xs cursor-pointer truncate"
-                  >
-                    👑 Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDemoFill('hasan.provider@gmail.com', 'password123')}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:border-[#1dbf73] hover:text-[#1dbf73] font-bold text-[11px] transition-colors shadow-2xs cursor-pointer truncate"
-                  >
-                    💼 Provider
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDemoFill('hasan.rafi0123@gmail.com', 'password123')}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:border-[#1dbf73] hover:text-[#1dbf73] font-bold text-[11px] transition-colors shadow-2xs cursor-pointer truncate"
-                  >
-                    👤 Client
-                  </button>
-                </div>
-              </div>
 
               {/* Social Login Options (Fiverr Style) */}
               <div className="space-y-2 flex justify-center">
